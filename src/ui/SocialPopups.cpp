@@ -234,11 +234,19 @@ void MembersPopup::render() {
         if (index >= rows.size()) break;
         auto const& m = rows[index];
         auto role = jsonutil::stringOr(m, "role");
-        auto subtitle = role == "owner" ? std::string("Dono") : role == "viewer" ? std::string("So ver") : group ? std::string("Membro") : std::string("Editor");
+        bool admin = jsonutil::boolOr(m, "can_save", false);
+        auto subtitle = role == "owner" ? std::string("Host") : role == "viewer" ? std::string("So ver") : group ? std::string("Membro") : admin ? std::string("ADM (salva)") : std::string("Editor");
         auto row = playerRow(m, 300, fmt::format("{}  |  Nv. {}", subtitle, levelOf(m)), this, menu_selector(MembersPopup::onPlayer));
         row->setTag(static_cast<int>(index));
-        row->setPosition({group && m_owner ? 180.f : 210.f, 225.f - i * 50});
+        row->setPosition({m_owner ? 180.f : 210.f, 225.f - i * 50});
         menu->addChild(row);
+        // Collab: the host chooses the ADMs (who can save and publish the level).
+        if (!group && m_owner && role != "owner" && role != "viewer") {
+            auto toggle = ui::makeTextButton(admin ? "Tirar ADM" : "Dar ADM", 78, admin ? "GJ_button_06.png" : "GJ_button_01.png", this, menu_selector(MembersPopup::onToggleAdmin), .24f, 24);
+            toggle->setTag(static_cast<int>(index));
+            toggle->setPosition({370, 225.f - i * 50});
+            menu->addChild(toggle);
+        }
         if (group && m_owner && role != "owner") {
             auto remove = ui::makeTextButton("Remover", 78, "GJ_button_06.png", this, menu_selector(MembersPopup::onRemove), .24f, 24);
             remove->setTag(static_cast<int>(index));
@@ -264,6 +272,22 @@ void MembersPopup::render() {
 }
 
 void MembersPopup::onPage(CCObject* s) { m_page += s->getTag(); render(); }
+
+void MembersPopup::onToggleAdmin(CCObject* s) {
+    auto rows = arrayOrEmpty(m_rows).asArray().unwrap();
+    auto index = static_cast<size_t>(s->getTag());
+    if (index >= rows.size()) return;
+    bool admin = jsonutil::boolOr(rows[index], "can_save", false);
+    WeakRef<MembersPopup> weak = this;
+    m_action.rpc("geobr_collab_set_saver", matjson::makeObject({{"p_room", m_id}, {"p_user", jsonutil::stringOr(rows[index], "user_id")}, {"p_on", !admin}}),
+        [weak, admin](auto r) {
+            auto self = weak.lock();
+            if (!self) return;
+            Notification::create(r.success ? (admin ? "ADM removido" : "Agora e ADM: pode salvar e publicar") : r.error,
+                r.success ? NotificationIcon::Success : NotificationIcon::Warning, 2.f)->show();
+            if (r.success) self->fetch();
+        });
+}
 
 void MembersPopup::onPlayer(CCObject* s) {
     auto rows = arrayOrEmpty(m_rows).asArray().unwrap();

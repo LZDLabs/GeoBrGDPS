@@ -6,6 +6,9 @@ import { createHandler, resolve } from "../app.ts";
 import { MemoryStore } from "../lib/storage.ts";
 import { b64urlDecode, b64urlEncode, genMulti, genSolo, genSolo2, gjp2Of, sha1, xorCipher } from "../lib/gd.ts";
 
+/** URL-safe base64 -> binary string (no UTF-8 decoding: XOR output is raw bytes). */
+const b64urlDecodeRaw = (t: string) => { let s = t.replaceAll("-", "+").replaceAll("_", "/"); while (s.length % 4) s += "="; return atob(s); };
+
 const sql = postgres({
   host: Deno.env.get("GDPS_TEST_HOST") ?? "127.0.0.1", port: Number(Deno.env.get("PGPORT") ?? 54329),
   database: Deno.env.get("GDPS_TEST_DB") ?? "gdps_test", username: Deno.env.get("PGUSER") ?? "postgres",
@@ -371,14 +374,28 @@ Deno.test({ name: "GeoBR GDPS server", sanitizeOps: false, sanitizeResources: fa
     eq((await api("admin", { ...jauth(users.Bobby), action: "events.set", kind: 0, levelID: level.rio })).ok, false, "rate moderator cannot set events");
     const d = await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 0, levelID: level.rio });
     const w = await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 1, levelID: level.demon });
-    const e = await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 2, levelID: level.demon2 });
-    assert(d.ok && w.ok && e.ok, "daily, weekly and event set");
-    await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 0, levelID: level.demon, inHours: 5 });
+    eq((await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 2, levelID: level.demon2 })).ok, false, "event needs rewards");
+    const e = await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 2, levelID: level.demon2, rewards: "500 diamantes 1000 orbs" });
+    assert(d.ok && w.ok && e.ok && !d.queued && !w.queued, "daily, weekly and event set");
+    eq(e.rewards, "8,500,7,1000", "event rewards in GD item codes");
+    // Daily is a queue: the next level waits for tomorrow, today's stays.
+    const next = await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 0, levelID: level.demon });
+    assert(next.ok && next.queued && new Date(next.starts_at).getTime() > Date.now(), "second daily is queued for tomorrow");
+    eq((await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 0, levelID: level.demon })).ok, false, "a level is queued once");
     const [dailyId, left] = (await gd("getGJDailyLevel", { type: 0 })).split("|").map(Number);
     eq(dailyId, d.id, "daily id");
-    assert(left > 4 * 3600 && left <= 5 * 3600, "time left until the scheduled next daily");
+    assert(left > 0 && left <= 86400, "time left until the next daily (UTC midnight)");
     eq(Number((await gd("getGJDailyLevel", { type: 1 })).split("|")[0]), w.id + 100001, "weekly offset");
-    eq(Number((await gd("getGJDailyLevel", { type: 2 })).split("|")[0]), e.id + 200001, "event offset");
+    const ev = (await gd("getGJDailyLevel", { type: 2, chk: "abcde" + btoa(xorCipher("777", "59182")) })).split("|");
+    eq(Number(ev[0]), e.id + 200001, "event offset");
+    eq(ev[1], "10", "event asks again soon");
+    eq(ev[3], await sha1(ev[2].slice(5) + "pC26fpYaQCtg"), "event reward hash");
+    const plain = xorCipher(b64urlDecodeRaw(ev[2].slice(5)), "59182").split(":");
+    eq(plain[1], "777", "event chk echoed");
+    eq(plain.slice(4).join(":"), "8,500,7,1000", "event rewards");
+    // A new event replaces the current one.
+    const e2 = await api("admin", { ...jauth(users.Dave), action: "events.set", kind: 2, levelID: level.rio, rewards: "8 50" });
+    eq(Number((await gd("getGJDailyLevel", { type: 2 })).split("|")[0]), e2.id + 200001, "latest event replaces the old one");
     const daily = (await gd("downloadGJLevel22", { levelID: -1 })).split("#");
     const l = rec(daily[0]);
     eq(l.get("1"), String(level.rio), "daily download is the level");
@@ -562,6 +579,10 @@ Deno.test({ name: "GeoBR GDPS server", sanitizeOps: false, sanitizeResources: fa
     eq(rec((await gd("downloadGJLevel22", { levelID: lvl })).split("#")[0]).get("42"), "1", "epic by command");
     const daily = await gd("uploadGJComment21", { ...auth(users.Bobby), comment: b64urlEncode("!daily"), levelID: lvl });
     assert(daily.includes("Erro"), "rate moderator cannot set the daily");
+    const slash = await gd("uploadGJComment21", { ...auth(users.Bobby), comment: b64urlEncode("/rate 4"), levelID: lvl });
+    assert(slash.startsWith("temp_0_") && slash.includes("4 estrela"), `/rate works like !rate (${slash})`);
+    const queued = await gd("uploadGJComment21", { ...auth(users.Dave), comment: b64urlEncode("/daily"), levelID: lvl });
+    assert(queued.startsWith("temp_0_") && queued.includes("fila"), `/daily goes to the queue (${queued})`);
     const asPlayer = await gd("uploadGJComment21", { ...auth(users.Alice), comment: b64urlEncode("!rate 10"), levelID: lvl });
     assert(/^\d+$/.test(asPlayer), "a player's ! text is just a comment");
     eq(rec((await gd("downloadGJLevel22", { levelID: lvl })).split("#")[0]).get("18"), "4", "player cannot rate");
@@ -577,7 +598,7 @@ Deno.test({ name: "GeoBR GDPS server", sanitizeOps: false, sanitizeResources: fa
     assert(/^temp_\d+_spam$/.test(muted) && Number(muted.split("_")[1]) > 7000, `muted reply ${muted}`);
     eq((await api("admin", { ...jauth(users.Dave), action: "accounts.unmute", target: users.Alice.id })).ok, true, "unmute");
     assert(/^\d+$/.test(await gd("uploadGJComment21", { ...auth(users.Alice), comment: b64urlEncode("voltei"), levelID: lvl })), "can comment again");
-    assert((await gd("uploadGJComment21", { ...auth(users.Bobby), comment: b64urlEncode("!help"), levelID: lvl })).includes("!rate"), "!help");
+    assert((await gd("uploadGJComment21", { ...auth(users.Bobby), comment: b64urlEncode("!help"), levelID: lvl })).includes("/daily"), "!help lists the / commands");
   });
 
   await t.step("password change keeps the account", async () => {
@@ -588,6 +609,16 @@ Deno.test({ name: "GeoBR GDPS server", sanitizeOps: false, sanitizeResources: fa
     eq(await gd("accounts/loginGJAccount", { userName: "Carol", gjp2: users.Carol.gjp2 }), "-1", "old password stops working");
     users.Carol.gjp2 = r.gjp2;
     eq(await gd("accounts/loginGJAccount", { userName: "Carol", gjp2: r.gjp2 }), `${users.Carol.id},${users.Carol.id}`, "new password works");
+  });
+
+  await t.step("account rename by the player", async () => {
+    eq((await api("account/rename", { ...jauth(users.Carol), userName: "a b" })).ok, false, "invalid name");
+    eq((await api("account/rename", { ...jauth(users.Carol), userName: "alice" })).ok, false, "name taken (any case)");
+    const r = await api("account/rename", { ...jauth(users.Carol), userName: "CarolBR" });
+    eq(r.ok, true, "renamed");
+    eq(await gd("accounts/loginGJAccount", { userName: "CarolBR", gjp2: users.Carol.gjp2 }), `${users.Carol.id},${users.Carol.id}`, "logs in with the new name");
+    eq(rec(await gd("getGJUserInfo20", { targetAccountID: users.Carol.id })).get("1"), "CarolBR", "profile shows the new name");
+    eq((await api("account/rename", { ...jauth(users.Carol), userName: "CarolDois" })).ok, false, "once a day");
   });
 
   await t.step("Supabase profile link needs the server key (live test covers GoTrue)", async () => {

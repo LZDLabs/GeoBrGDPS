@@ -46,6 +46,8 @@ public:
     void sync(std::string room, std::string mine, SyncDone done, bool mergeOnConflict = true);
     bool syncing() const { return m_syncing; }
     void publish(std::string const& room, int levelID);
+    // Saves the editor's level as the room's level (host and ADMs only).
+    void saveSnapshot(std::string const& room, std::string const& level, std::function<void(bool, std::string)> done);
 
 private:
     void pushAttempt(std::string room, std::string mine, std::string base, int64_t baseRevision, int tries, SyncDone done, bool mergeOnConflict);

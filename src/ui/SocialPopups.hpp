@@ -48,6 +48,7 @@ private:
     void onPage(cocos2d::CCObject*);
     void onPlayer(cocos2d::CCObject*);
     void onRemove(cocos2d::CCObject*);
+    void onToggleAdmin(cocos2d::CCObject*);
     void onAdd(cocos2d::CCObject*);
 };
 

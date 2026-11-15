@@ -272,6 +272,7 @@ void GdpsPopup::render() {
     if (gdps::loggedIn()) {
         second.push_back({"Codigo de recuperacao", "GJ_button_04.png", menu_selector(GdpsPopup::onRecoveryCode)});
         second.push_back({"Trocar senha", "GJ_button_04.png", menu_selector(GdpsPopup::onPassword)});
+        second.push_back({"Mudar nome", "GJ_button_04.png", menu_selector(GdpsPopup::onRename)});
     } else {
         second.push_back({"Esqueci a senha", "GJ_button_04.png", menu_selector(GdpsPopup::onResetPassword)});
     }
@@ -297,6 +298,27 @@ void GdpsPopup::onPassword(CCObject*) {
                 if (auto am = GJAccountManager::sharedState()) am->m_GJP2 = jsonutil::stringOr(r.value, "gjp2");
                 GameManager::sharedState()->save();
                 status("Senha trocada.");
+            });
+        });
+    if (prompt) prompt->show();
+}
+
+// Own account name (once a day). GD keeps the name for its login, so the
+// account manager and the player name are updated and saved too.
+void GdpsPopup::onRename(CCObject*) {
+    auto prompt = GdpsPrompt::create("Mudar nome", "3 a 20 letras ou numeros. Uma vez por dia.",
+        {{"Novo nome", gdps::username(), CommonFilter::Alphanumeric, 20}}, {"Mudar", "Cancelar"},
+        [this](int button, auto const& v) {
+            if (button != 0) return;
+            status("Mudando o nome...");
+            m_action.post("account/rename", matjson::makeObject({{"userName", v[0]}}), [this](gdps::Result r) {
+                if (!r.ok) { status(r.error); return; }
+                auto name = jsonutil::stringOr(r.value, "username");
+                if (auto am = GJAccountManager::sharedState()) am->m_username = name;
+                GameManager::sharedState()->m_playerName = name;
+                GameManager::sharedState()->save();
+                status("Nome trocado para " + name + ".");
+                gdps::refreshMe();
             });
         });
     if (prompt) prompt->show();

@@ -1,7 +1,7 @@
 // Levels: upload/update, search lists, download, rating and moderation from
 // GD's own buttons, Daily/Weekly/Event and the per-level leaderboards.
 import { type Ctx, audit, can, gdAccount, grantsOf, intParam, param } from "../lib/core.ts";
-import { DEMON_KEY43, age, clean, difficultyOfStars, encodeLevelPassword, genMulti, genSolo, genSolo2, idList, record, safeInt, secondsToReset } from "../lib/gd.ts";
+import { DEMON_KEY43, SALT_CHESTS, XOR_CHESTS, age, b64urlEncode, clean, decodeChk, difficultyOfStars, encodeLevelPassword, genMulti, genSolo, genSolo2, idList, record, safeInt, secondsToReset, sha1, xorCipher } from "../lib/gd.ts";
 import { recomputeCreatorPoints } from "./accounts.ts";
 import { songsSection } from "./songs.ts";
 import { listLevelIds } from "./packs.ts";
@@ -160,11 +160,14 @@ export async function getGJLevels21(ctx: Ctx): Promise<string> {
   return listResponse(ctx, rows, rows[0]?.total ?? 0, offset);
 }
 
+/** Daily = the queued level of today (UTC), Weekly = of this week (Monday);
+ *  none when the queue has nothing for the period. Event = the last one set. */
 async function currentTimely(ctx: Ctx, kind: number): Promise<Row | undefined> {
+  const since = kind === 0 ? ctx.sql`date_trunc('day', now())` : kind === 1 ? ctx.sql`date_trunc('week', now())` : ctx.sql`'-infinity'::timestamptz`;
   const [row] = await ctx.sql`
-    select t.timely_id::int as timely_id, t.level_id::int as level_id from geobr_gdps.timely t
+    select t.timely_id::int as timely_id, t.level_id::int as level_id, t.rewards from geobr_gdps.timely t
     join geobr_gdps.levels l on l.level_id = t.level_id
-    where t.kind = ${kind} and t.starts_at <= now() and not l.deleted and not l.blocked
+    where t.kind = ${kind} and t.starts_at <= now() and t.starts_at >= ${since} and not l.deleted and not l.blocked
     order by t.starts_at desc, t.timely_id desc limit 1`;
   return row;
 }
@@ -361,9 +364,12 @@ export async function getGJDailyLevel(ctx: Ctx): Promise<string> {
   const kind = safeInt(param(ctx, "type", param(ctx, "weekly", "0")), 0, 0, 2);
   const timely = await currentTimely(ctx, kind);
   if (!timely) return "-1";
-  const [next] = await ctx.sql`select extract(epoch from (min(starts_at) - now()))::int as s from geobr_gdps.timely where kind = ${kind} and starts_at > now()`;
-  const left = next?.s && next.s > 0 ? next.s : secondsToReset(kind, ctx.now);
-  return `${timely.timely_id + TIMELY_OFFSET[kind]}|${left}`;
+  const id = timely.timely_id + TIMELY_OFFSET[kind];
+  if (kind < 2) return `${id}|${secondsToReset(kind, ctx.now)}`;
+  // Event: rewards in the chest format (XOR + base64, sha1 check); GD asks again soon.
+  const chk = decodeChk(param(ctx, "chk"), XOR_CHESTS);
+  const encoded = b64urlEncode(xorCipher(`SaKuJ:${chk}:${timely.timely_id}:3:${timely.rewards || "7,100"}`, XOR_CHESTS));
+  return `${id}|10|SaKuJ${encoded}|${await sha1(encoded + SALT_CHESTS)}`;
 }
 
 async function scoreRows(ctx: Ctx, levelId: number, type: number, viewer: number | null, plat: false | "time" | "points") {

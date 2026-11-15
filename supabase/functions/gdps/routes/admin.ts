@@ -2,7 +2,7 @@
 // done here, per request, from the roles stored in the database. Every change
 // is written to geobr_gdps.audit_log.
 import { ALL_PERMISSIONS, type Ctx, type Grants, type Permission, audit, can, grantsOf, jsonAccount } from "../lib/core.ts";
-import { clean, idList, safeInt } from "../lib/gd.ts";
+import { clean, idList, parseRewards, safeInt } from "../lib/gd.ts";
 import { recomputeCreatorPoints } from "./accounts.ts";
 import { applyRating } from "./levels.ts";
 
@@ -386,12 +386,33 @@ const actions: Record<string, Action> = {
     const levelId = safeInt(b.levelID, 0);
     const [l] = await ctx.sql`select stars from geobr_gdps.levels where level_id = ${levelId} and not deleted and not blocked`;
     if (!l) return fail("Level nao encontrado.");
-    const hours = safeInt(b.inHours, 0, 0, 24 * 60);
-    const [row] = await ctx.sql`
-      insert into geobr_gdps.timely (kind, level_id, starts_at, created_by)
-      values (${kind}, ${levelId}, now() + make_interval(hours => ${hours}), ${actor.id}) returning timely_id::int, starts_at`;
+    if (kind === 2) {
+      // Event: stays until another event level is set.
+      const rewards = parseRewards(b.rewards);
+      if (!rewards) return fail("Informe as recompensas, ex.: 500 diamantes 1000 orbs");
+      const [row] = await ctx.sql`
+        insert into geobr_gdps.timely (kind, level_id, starts_at, created_by, rewards)
+        values (2, ${levelId}, now(), ${actor.id}, ${rewards}) returning timely_id::int, starts_at`;
+      await audit(ctx, actor.id, "event.set", "level", levelId, { kind, timely: row.timely_id, rewards });
+      return ok({ id: row.timely_id, starts_at: row.starts_at, rewards });
+    }
+    // Daily / Weekly: a queue, one level per day (UTC) / week (Monday). Today's
+    // (this week's) slot if free, otherwise the first free one after the queue.
+    const unit = kind === 0 ? "day" : "week";
+    const [dup] = await ctx.sql`select 1 from geobr_gdps.timely where kind = ${kind} and level_id = ${levelId} and starts_at >= date_trunc(${unit}, now())`;
+    if (dup) return fail("Esse level ja esta na fila.");
+    const row = await ctx.sql.begin(async (tx) => {
+      await tx`select pg_advisory_xact_lock(hashtext('gdps-timely-' || ${kind}))`;
+      const [slot] = await tx`
+        select case when max(starts_at) is null or max(starts_at) < date_trunc(${unit}, now()) then now()
+          else date_trunc(${unit}, max(starts_at)) + make_interval(days => ${kind === 0 ? 1 : 7}) end as at
+        from geobr_gdps.timely where kind = ${kind}`;
+      const [r] = await tx`insert into geobr_gdps.timely (kind, level_id, starts_at, created_by)
+        values (${kind}, ${levelId}, ${slot.at}, ${actor.id}) returning timely_id::int, starts_at, starts_at > now() as queued`;
+      return r;
+    });
     await audit(ctx, actor.id, "event.set", "level", levelId, { kind, timely: row.timely_id, starts_at: row.starts_at });
-    return ok({ id: row.timely_id, starts_at: row.starts_at });
+    return ok({ id: row.timely_id, starts_at: row.starts_at, queued: row.queued });
   } },
   "events.remove": { perm: "events.manage", run: async (ctx, actor, b) => {
     const id = safeInt(b.id, 0);

@@ -2,6 +2,7 @@
 // profile). Every action goes through the admin API, which checks the
 // permission again on the server.
 #include "GdpsPopups.hpp"
+#include "GdpsRatePopup.hpp"
 #include "GeoBRVisuals.hpp"
 #include "UIHelpers.hpp"
 #include "../models/JsonModelUtils.hpp"
@@ -132,12 +133,12 @@ bool LevelModPopup::init(int levelID, std::string name) {
     m_mainLayer->addChild(menu, 5);
     Grid grid {menu, this, menu_selector(LevelModPopup::onAction), 220, 206, 98, 26, 6, 4};
     // Rating itself uses GD's own star button (RobTop's moderator popup).
-    if (gdps::can("levels.rate")) { grid.add("Tirar rate", "GJ_button_04.png", Unrate); grid.add("Moedas ok", "GJ_button_04.png", Coins); }
+    if (gdps::can("levels.rate")) { grid.add("Rate", "GJ_button_01.png", Rate); grid.add("Tirar rate", "GJ_button_04.png", Unrate); }
     if (gdps::can("events.manage")) { grid.add("Daily", "GJ_button_05.png", Daily); grid.add("Weekly", "GJ_button_05.png", Weekly); grid.add("Evento", "GJ_button_05.png", Event); }
     if (gdps::can("levels.block")) { grid.add("Bloquear", "GJ_button_06.png", Block); grid.add("Desbloquear", "GJ_button_04.png", Unblock); }
     if (gdps::can("levels.delete")) grid.add("Apagar", "GJ_button_06.png", Delete);
     if (!grid.count) label(m_mainLayer, "Seu cargo nao tem acoes de level.", {220, 150}, .45f, 400, ui::palette::TextSoft);
-    m_status = label(m_mainLayer, "Rate: botao de estrelas do GD (toque no rosto: Featured, Epic...)", {220, 22}, .38f, 410, ui::palette::TextSoft);
+    m_status = label(m_mainLayer, "Daily/Weekly entram na fila. Tambem: /daily, /weekly, /event nos comentarios.", {220, 22}, .38f, 410, ui::palette::TextSoft);
     return true;
 }
 
@@ -156,9 +157,7 @@ void LevelModPopup::onAction(CCObject* sender) {
     };
     switch (a) {
         case Rate:
-            confirmThen("Rate", "Estrelas 1 a 10 (10 = Demon). Demon: 1 Easy a 5 Extreme. Moedas: 1 verifica.",
-                {{"Estrelas", "", CommonFilter::Uint, 2}, {"Demon (1-5)", "3", CommonFilter::Uint, 1}, {"Moedas (0/1)", "0", CommonFilter::Uint, 1}},
-                [this](auto const& v) { act("levels.rate", matjson::makeObject({{"stars", toInt(v[0])}, {"demonDiff", toInt(v[1], 3)}, {"coins", v[2] == "1"}}), "Rate salvo."); });
+            if (auto p = GdpsRatePopup::create(m_level, m_name)) p->show();
             break;
         case Unrate: act("levels.rate", matjson::makeObject({{"stars", 0}}), "Rate removido."); break;
         case Coins: confirmThen("Moedas", "Verificar as moedas mantem o rate atual.", {{"Estrelas atuais", "", CommonFilter::Uint, 2}},
@@ -169,13 +168,23 @@ void LevelModPopup::onAction(CCObject* sender) {
         case Legendary: act("levels.feature", matjson::makeObject({{"feature", true}, {"epic", 2}}), "Legendary."); break;
         case Mythic: act("levels.feature", matjson::makeObject({{"feature", true}, {"epic", 3}}), "Mythic."); break;
         case NoTier: act("levels.feature", matjson::makeObject({{"feature", false}, {"epic", 0}}), "Destaque removido."); break;
-        case Daily: case Weekly: case Event: {
+        case Daily: case Weekly: {
+            // A queue: today's (this week's) slot if free, else the next free one.
             int kind = a - Daily;
-            static char const* names[] = {"Daily", "Weekly", "Evento"};
-            confirmThen(names[kind], "Comeca agora (0) ou daqui a algumas horas.", {{"Comeca em (horas)", "0", CommonFilter::Uint, 4}},
-                [this, kind](auto const& v) { act("events.set", matjson::makeObject({{"kind", kind}, {"inHours", toInt(v[0])}}), "Agendado."); });
+            status("Enviando...");
+            m_action.admin("events.set", matjson::makeObject({{"levelID", m_level}, {"kind", kind}}), [this, kind](gdps::Result r) {
+                if (!r.ok) { status(r.error); return; }
+                auto day = jsonutil::stringOr(r.value, "starts_at").substr(0, 10);
+                status(jsonutil::boolOr(r.value, "queued", false) ? fmt::format("Na fila: entra em {}.", day)
+                                                                   : (kind == 0 ? "Daily de hoje definido." : "Weekly desta semana definido."));
+            });
             break;
         }
+        case Event:
+            confirmThen("Evento", "Fica ate voce definir outro level. Ex.: 500 diamantes 1000 orbs 1 chave",
+                {{"Recompensas", "500 diamantes 1000 orbs", CommonFilter::Any, 80}},
+                [this](auto const& v) { act("events.set", matjson::makeObject({{"kind", 2}, {"rewards", v[0]}}), "Evento definido."); });
+            break;
         case DemonList:
             confirmThen("Demon List", "Posicao na lista (os outros descem).", {{"Posicao", "1", CommonFilter::Uint, 4}, {"Verificador", "", CommonFilter::Any, 30}},
                 [this](auto const& v) { act("demonlist.set", matjson::makeObject({{"position", toInt(v[0], 1)}, {"verifier", v[1]}}), "Demon List atualizada."); });

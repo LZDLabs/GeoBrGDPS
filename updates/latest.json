@@ -1,19 +1,19 @@
 {
   "format": 1,
-  "notes": "Agora tambem para PC (Windows). Rate pelo botao de estrelas do GD, collab corrigido, sem Demon List.",
+  "notes": "Collab ao vivo, rate igual ao da RobTop, /daily /weekly /event e mudar o nome da conta.",
   "packages": [
     {
       "id": "geobr.geobrmod",
       "name": "GeoBR",
-      "version": "1.11.0",
+      "version": "1.12.0",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "f980b668afef67177a18ba2877536c079e764ce547a386d54d2552269d8431a2"
+          "sha256": "4a10ae9cd3bbc5c59a0eb6fd86e03fc0520b770b5c3a885fcaecbba68e4b9e3e"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "f980b668afef67177a18ba2877536c079e764ce547a386d54d2552269d8431a2"
+          "sha256": "4a10ae9cd3bbc5c59a0eb6fd86e03fc0520b770b5c3a885fcaecbba68e4b9e3e"
         }
       }
     },

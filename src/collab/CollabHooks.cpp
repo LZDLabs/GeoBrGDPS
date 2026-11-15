@@ -1,6 +1,7 @@
 // RC9 collab editor: the hooks into GD's own screens. Every addition is a
 // separate menu with a geobr-* ID; nothing native is moved, hidden or
 // re-laid-out, so GD and other mods keep their layouts.
+#include "CollabLive.hpp"
 #include "CollabMerge.hpp"
 #include "CollabService.hpp"
 #include "../ui/CollabPopup.hpp"
@@ -12,6 +13,7 @@
 #include <Geode/binding/GJSearchObject.hpp>
 #include <Geode/binding/GameObject.hpp>
 #include <Geode/binding/LevelEditorLayer.hpp>
+#include <Geode/modify/EditLevelLayer.hpp>
 #include <Geode/modify/EditorPauseLayer.hpp>
 #include <Geode/modify/EditorUI.hpp>
 #include <Geode/modify/LevelBrowserLayer.hpp>
@@ -59,37 +61,6 @@ std::string roomOfEditor(LevelEditorLayer* editor) {
     return editor ? roomOfSettings(editor->m_levelSettings) : std::string();
 }
 
-// Applies a merged level to the open editor without reloading it: objects
-// that only exist in `mine` are removed, the ones only in `merged` created.
-int applyToEditor(EditorUI* ui, std::string const& mine, std::string const& merged) {
-    auto editor = ui ? ui->m_editorLayer : nullptr;
-    if (!editor || !editor->m_objects) return 0;
-    auto a = splitLevel(mine), b = splitLevel(merged);
-    std::unordered_map<std::string, int> count;
-    for (auto const& o : b.objects) ++count[o];
-    std::unordered_map<std::string, int> remove;
-    for (auto const& o : a.objects) {
-        auto it = count.find(o);
-        if (it != count.end() && it->second > 0) --it->second;
-        else ++remove[o];
-    }
-    std::string add;
-    int added = 0;
-    for (auto const& [o, n] : count) for (int i = 0; i < n; ++i) { add += o; add += ';'; ++added; }
-    ui->deselectAll();
-    if (!remove.empty()) {
-        std::vector<GameObject*> victims;
-        for (auto object : CCArrayExt<GameObject*>(editor->m_objects)) {
-            if (!object) continue;
-            std::string saved = object->getSaveString(editor);
-            auto it = remove.find(saved);
-            if (it != remove.end() && it->second > 0) { --it->second; victims.push_back(object); }
-        }
-        for (auto object : victims) editor->removeObject(object, true);
-    }
-    if (!add.empty()) editor->createObjectsFromString(gd::string(add), true, true);
-    return added;
-}
 
 } // namespace
 
@@ -134,38 +105,21 @@ class $modify(GeoBRCollabBrowser, LevelBrowserLayer) {
 class $modify(GeoBRCollabEditorUI, EditorUI) {
     bool init(LevelEditorLayer* editor) {
         if (!EditorUI::init(editor)) return false;
-        if (roomOfEditor(editor).empty()) return true;
+        auto room = roomOfEditor(editor);
+        if (room.empty()) return true;
         auto win = CCDirector::sharedDirector()->getWinSize();
         auto menu = CCMenu::create();
         menu->setID("geobr-collab-editor-menu");
         menu->setPosition({win.width / 2.f, win.height - 18.f});
-        char const* labels[] = {"Sync", "Chat"};
-        SEL_MenuHandler handlers[] = {menu_selector(GeoBRCollabEditorUI::onCollabSync), menu_selector(GeoBRCollabEditorUI::onCollabChat)};
-        for (int i = 0; i < 2; ++i) {
-            auto sprite = ButtonSprite::create(labels[i], 46, true, "bigFont.fnt", i ? "GJ_button_02.png" : "GJ_button_01.png", 24, .5f);
-            sprite->setScale(.75f);
-            auto button = CCMenuItemSpriteExtra::create(sprite, this, handlers[i]);
-            button->setID(i ? "geobr-collab-chat" : "geobr-collab-sync");
-            button->setPosition({i ? 26.f : -26.f, 0.f});
-            menu->addChild(button);
-        }
+        auto sprite = ButtonSprite::create("Chat", 46, true, "bigFont.fnt", "GJ_button_02.png", 24, .5f);
+        sprite->setScale(.75f);
+        auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(GeoBRCollabEditorUI::onCollabChat));
+        button->setID("geobr-collab-chat");
+        menu->addChild(button);
         addChild(menu, 100);
+        // Live editing: changes and everyone's position, about once per second.
+        geobr::collab::startLive(this, room);
         return true;
-    }
-
-    void onCollabSync(CCObject*) {
-        auto room = roomOfEditor(m_editorLayer);
-        if (room.empty()) return;
-        std::string mine = m_editorLayer->getLevelString();
-        Notification::create("Sincronizando com a sala...", NotificationIcon::Loading, 1.f)->show();
-        WeakRef<EditorUI> weak = this;
-        CollabService::get()->sync(room, mine, [weak, mine](bool ok, std::string message, std::string merged, bool changed) {
-            if (!ok) { Notification::create(message, NotificationIcon::Warning, 2.5f)->show(); return; }
-            int added = 0;
-            if (changed) if (auto self = weak.lock()) added = applyToEditor(self.data(), mine, merged);
-            Notification::create(changed ? fmt::format("{} | {} objeto(s) de outros membros", message, added) : message,
-                NotificationIcon::Success, 2.f)->show();
-        });
     }
 
     void onCollabChat(CCObject*) {
@@ -176,17 +130,33 @@ class $modify(GeoBRCollabEditorUI, EditorUI) {
     }
 };
 
-// Saving a collab level also sends it (no merge here: if someone else
-// changed the room meanwhile, the editor's Sync merges and shows it).
+// Saving a collab level: the host and the ADMs save the room's level; the
+// others' edits are already in the room (live), so nothing is overwritten.
 class $modify(GeoBRCollabPause, EditorPauseLayer) {
     void saveLevel() {
         EditorPauseLayer::saveLevel();
         auto room = roomOfEditor(m_editorLayer);
-        if (room.empty() || CollabService::get()->syncing()) return;
-        std::string mine = m_editorLayer->getLevelString();
-        CollabService::get()->sync(room, mine, [](bool ok, std::string message, std::string, bool) {
-            Notification::create(ok ? "Collab: alteracoes enviadas" : message, ok ? NotificationIcon::Success : NotificationIcon::Warning, 2.f)->show();
-        }, false);
+        if (room.empty()) return;
+        if (!geobr::collab::canSaveRoom(room)) {
+            Notification::create("Collab: so o host e os ADMs salvam o level. Suas edicoes ja estao na sala.", NotificationIcon::Info, 3.f)->show();
+            return;
+        }
+        std::string level = m_editorLayer->getLevelString();
+        CollabService::get()->saveSnapshot(room, level, [](bool ok, std::string message) {
+            Notification::create(ok ? "Collab: level da sala salvo" : message, ok ? NotificationIcon::Success : NotificationIcon::Warning, 2.f)->show();
+        });
+    }
+};
+
+// Publishing a collab level: host and ADMs only.
+class $modify(GeoBRCollabShare, EditLevelLayer) {
+    void onShare(CCObject* sender) {
+        auto room = m_level ? CollabService::roomOf(m_level) : std::string();
+        if (!room.empty() && !geobr::collab::canSaveRoom(room)) {
+            FLAlertLayer::create("Collab", "So o <cy>host</c> e os <cg>ADMs</c> da sala podem publicar este level.", "OK")->show();
+            return;
+        }
+        EditLevelLayer::onShare(sender);
     }
 };
 

@@ -1,4 +1,4 @@
-# GDPS GeoBR — 1.11.0 (Android arm64)
+# GDPS GeoBR — 1.12.0 (Android e PC)
 
 São **dois arquivos**, instalados pelo Geode:
 
@@ -10,6 +10,17 @@ São **dois arquivos**, instalados pelo Geode:
 > **Status do servidor (13/11):** a v2 está no ar. O banco foi atualizado, a função `gdps` está na versão 2 e a conta **Luiz** (ID 1, Owner) foi criada. O teste ao vivo contra o Supabase real passou. Os dados do teste de 08/11 foram **escondidos, não apagados**: as contas `GeoBRTeste` estão banidas e fora do ranking, e o level de teste está marcado como apagado. Assim a migração não precisou de nenhuma confirmação sua.
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
+
+## 1.12.0 (15/11)
+
+| Pedido | Feito | Testado |
+|---|---|---|
+| Collab ao vivo (sem "Sync") | O level da sala fica guardado objeto por objeto no servidor. Cada editor envia o que mudou e recebe o dos outros cerca de 1 vez por segundo. O nome de cada pessoa aparece no ponto do level onde ela está. O botão Sync saiu e o Chat ficou. | Servidor em produção, com transação desfeita no final: semear a sala, edição e exclusão nos dois sentidos, presença. Editor: compila em Android e PC; falta testar no jogo |
+| Só o host e os ADMs salvam | O host marca ADM em Membros ("Dar ADM"). Salvar o level da sala e publicar ficam só para host e ADMs, e o servidor recusa os outros. | Produção (membro recusado, ADM salva) |
+| Rate confuso | Popup no estilo da RobTop: estrelas de 1 a 10; tocar no rosto troca Rated > Featured > Epic > Legendary > Mythic; dificuldade de Demon e moedas. É o mesmo no botão Mod do level e no Painel ADM. | Compila; falta testar no jogo |
+| /daily e /weekly | Comando no comentário do level (só ADM). Funciona como fila: um level por dia (UTC) ou por semana (segunda). Sem level na fila, não tem Daily. | Servidor local |
+| Event | `/event 500 diamantes 1000 orbs`: o level fica como Event, com recompensas, até você definir outro. | Servidor local, incluindo a resposta codificada que o GD lê |
+| Mudar o nome da conta | GDPS → Mudar nome (uma vez por dia; o GD guarda o nome novo para o login). | Servidor local |
 
 ## 1.11.0 (15/11)
 

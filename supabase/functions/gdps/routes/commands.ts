@@ -8,7 +8,7 @@ import { runAction } from "./admin.ts";
 
 export const reply = (text: string) => `temp_0_${clean(text, 140).replace(/_/g, " ")}`;
 
-const HELP = "Comandos: !rate N [demon 1-5], !unrate, !feature, !unfeature, !epic, !legendary, !mythic, !unepic, !coins, !uncoins, !daily, !weekly, !event, !block, !unblock, !delete, !ban NOME [dias], !unban, !mute NOME horas, !unmute, !lbban NOME, !lbunban";
+const HELP = "Comandos (/ ou !): /daily, /weekly (entram na fila), /event 500 diamantes 1000 orbs, /rate N, /unrate, /feature, /epic, /legendary, /mythic, /coins, /block, /delete, /ban NOME, /mute NOME horas, /lbban NOME, /lbunban";
 
 async function accountByName(ctx: Ctx, name: string): Promise<number | null> {
   const n = name.trim();
@@ -22,7 +22,7 @@ async function accountByName(ctx: Ctx, name: string): Promise<number | null> {
 /** Runs a "!" command. Returns null when the text is not a command for this account (post it normally). */
 export async function runCommand(ctx: Ctx, account: Account, text: string, levelId: number | null): Promise<string | null> {
   const trimmed = text.trim();
-  if (!trimmed.startsWith("!")) return null;
+  if (!trimmed.startsWith("!") && !trimmed.startsWith("/")) return null;
   const g = await grantsOf(ctx, account.account_id);
   if (!can(g, "admin.panel")) return null;
   const [rawCmd, ...args] = trimmed.slice(1).split(/\s+/);
@@ -30,7 +30,8 @@ export async function runCommand(ctx: Ctx, account: Account, text: string, level
   const rest = (from: number) => args.slice(from).join(" ");
   // deno-lint-ignore no-explicit-any
   const done = (r: Record<string, any>, msg: string) => reply(r.ok ? msg : `Erro: ${r.error ?? "falhou"}`);
-  const act = (name: string, body: Record<string, unknown>) => runAction(ctx, account.account_id, name, body);
+  // deno-lint-ignore no-explicit-any
+  const act = async (name: string, body: Record<string, unknown>): Promise<Record<string, any>> => await runAction(ctx, account.account_id, name, body);
 
   if (cmd === "help" || cmd === "ajuda") return reply(HELP);
 
@@ -62,10 +63,16 @@ export async function runCommand(ctx: Ctx, account: Account, text: string, level
         if (lvl.stars !== 10) return reply("O level precisa ter rate de 10 estrelas (Demon).");
         return done(await act("levels.rate", { levelID: levelId, stars: 10, demonDiff: safeInt(args[0], 3, 1, 5) }), "Dificuldade de Demon alterada.");
       }
-      case "daily": case "weekly": case "event": {
-        const kind = cmd === "daily" ? 0 : cmd === "weekly" ? 1 : 2;
-        const names = ["Daily", "Weekly", "Evento"];
-        return done(await act("events.set", { kind, levelID: levelId, inHours: safeInt(args[0], 0, 0, 24 * 60) }), `${names[kind]} definido.`);
+      case "daily": case "weekly": {
+        const kind = cmd === "daily" ? 0 : 1;
+        const r = await act("events.set", { kind, levelID: levelId });
+        if (!r.ok) return done(r, "");
+        const when = new Date(r.starts_at).toISOString().slice(0, 10);
+        return reply(r.queued ? `Na fila do ${cmd === "daily" ? "Daily" : "Weekly"}: entra em ${when}.` : `${cmd === "daily" ? "Daily de hoje" : "Weekly desta semana"} definido.`);
+      }
+      case "event": {
+        const r = await act("events.set", { kind: 2, levelID: levelId, rewards: rest(0) });
+        return done(r, `Evento definido (recompensas ${r.rewards ?? ""}).`);
       }
       case "block": return done(await act("levels.block", { levelID: levelId, reason: rest(0) }), "Level bloqueado.");
       case "unblock": return done(await act("levels.unblock", { levelID: levelId }), "Level desbloqueado.");

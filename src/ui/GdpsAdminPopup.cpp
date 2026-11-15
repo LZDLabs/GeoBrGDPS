@@ -1,6 +1,7 @@
 // GDPS admin panel. The tabs shown follow the permissions the server returned
 // for this account; every action is checked again on the server.
 #include "GdpsPopups.hpp"
+#include "GdpsRatePopup.hpp"
 #include "GeoBRVisuals.hpp"
 #include "UIHelpers.hpp"
 #include "../models/JsonModelUtils.hpp"
@@ -201,11 +202,17 @@ void GdpsAdminPopup::onTool(CCObject* sender) {
             m_sub = 0; break;
         case Events: {
             static char const* kinds[] = {"Daily", "Weekly", "Evento"};
-            auto prompt = GdpsPrompt::create(fmt::format("Novo {}", kinds[tool]), "Comeca agora ou daqui a algumas horas (agendado).",
-                {{"ID do level", "", CommonFilter::Uint, 10}, {"Comeca em (horas)", "0", CommonFilter::Uint, 4}}, {"Salvar", "Cancelar"},
+            // Daily/Weekly: a queue (one level per day / week). Event: stays until the next one, with rewards.
+            std::vector<GdpsPrompt::Field> fields = {{"ID do level", "", CommonFilter::Uint, 10}};
+            if (tool == 2) fields.push_back({"Recompensas", "500 diamantes 1000 orbs", CommonFilter::Any, 80});
+            auto prompt = GdpsPrompt::create(fmt::format("Novo {}", kinds[tool]),
+                tool == 2 ? "Fica ate voce definir outro level." : "Entra na fila: hoje se o dia estiver livre, senao no proximo livre.",
+                fields, {"Salvar", "Cancelar"},
                 [this, tool](int b, auto const& v) {
                     if (b != 0) return;
-                    act("events.set", matjson::makeObject({{"kind", tool}, {"levelID", toInt(v[0])}, {"inHours", toInt(v[1])}}), "Evento salvo.");
+                    auto body = matjson::makeObject({{"kind", tool}, {"levelID", toInt(v[0])}});
+                    if (tool == 2) body["rewards"] = v[1];
+                    act("events.set", body, tool == 2 ? "Evento definido." : "Colocado na fila.");
                 });
             if (prompt) prompt->show();
             return;
@@ -472,12 +479,11 @@ void GdpsAdminPopup::onRow(int index, int button) {
     }
     if (m_tab == Levels) {
         auto name = str(r, "name");
-        if (what == "Rate") confirm("Rate: " + name, "0 estrelas tira o rate. Demon: 1 Easy a 5 Extreme.",
-            {{"Estrelas (0-10)", str(r, "stars"), CommonFilter::Uint, 2}, {"Demon (1-5)", "3", CommonFilter::Uint, 1}, {"Moedas verificadas (0/1)", flag(r, "coins_verified") ? "1" : "0", CommonFilter::Uint, 1}},
-            [this, id](auto const& v) {
-                act("levels.rate", matjson::makeObject({{"levelID", id}, {"stars", toInt(v[0])}, {"demonDiff", toInt(v[1], 3)}, {"coins", v[2] == "1"}}), "Rate salvo.");
-            });
-        else if (what == "Tier") {
+        if (what == "Rate") {
+            // The same RobTop-style popup as the level page (face = Featured/Epic/...).
+            int tier = jsonutil::integerOr(r, "epic", 0) > 0 ? static_cast<int>(jsonutil::integerOr(r, "epic", 0)) + 1 : (jsonutil::integerOr(r, "feature_score", 0) > 0 ? 1 : 0);
+            if (auto p = GdpsRatePopup::create(id, name, static_cast<int>(jsonutil::integerOr(r, "stars", 0)), tier, [weak = WeakRef<GdpsAdminPopup>(this)] { if (auto self = weak.lock()) self->load(); })) p->show();
+        } else if (what == "Tier") {
             auto prompt = GdpsPrompt::create("Destaque: " + name, "Precisa ter rate (estrelas).", {}, {"Nada", "Feature", "Epic", "Legendary", "Mythic"},
                 [this, id](int b, auto const&) {
                     act("levels.feature", matjson::makeObject({{"levelID", id}, {"feature", b >= 1}, {"epic", std::max(0, b - 1)}}), "Destaque salvo.");

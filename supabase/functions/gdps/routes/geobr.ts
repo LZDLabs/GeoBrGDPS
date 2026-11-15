@@ -71,6 +71,27 @@ export async function passwordChange(ctx: Ctx) {
   return { ok: true, gjp2 };
 }
 
+/** Changes the logged-in account's name (once a day; names stay unique). */
+export async function renameSelf(ctx: Ctx) {
+  const account = await jsonAccount(ctx);
+  if (!account) return { ok: false, error: "Conta ou senha incorreta." };
+  const name = String(ctx.json.userName ?? "").trim();
+  if (!/^[A-Za-z0-9]{3,20}$/.test(name)) return { ok: false, error: "Nome: 3 a 20 letras ou numeros, sem espacos." };
+  if (name === account.username) return { ok: false, error: "Esse ja e o seu nome." };
+  const [recent] = await ctx.sql`select 1 from geobr_gdps.audit_log where actor = ${account.account_id} and action = 'account.rename.self' and at > now() - interval '1 day'`;
+  if (recent) return { ok: false, error: "Voce so pode mudar o nome uma vez por dia." };
+  const [taken] = await ctx.sql`select 1 from geobr_gdps.accounts where lower(username) = lower(${name}) and account_id <> ${account.account_id}`;
+  if (taken) return { ok: false, error: "Esse nome ja esta em uso." };
+  try {
+    await ctx.sql`update geobr_gdps.accounts set username = ${name} where account_id = ${account.account_id}`;
+  } catch (e) {
+    if (String((e as { code?: string }).code) === "23505") return { ok: false, error: "Esse nome ja esta em uso." };
+    throw e;
+  }
+  await audit(ctx, account.account_id, "account.rename.self", "account", account.account_id, { from: account.username, to: name });
+  return { ok: true, username: name };
+}
+
 export async function ownerClaim(ctx: Ctx) {
   const account = await jsonAccount(ctx);
   if (!account) return { ok: false, error: "Conta ou senha incorreta." };

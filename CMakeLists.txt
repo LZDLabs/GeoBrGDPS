@@ -64,6 +64,7 @@ add_library(${PROJECT_NAME} SHARED
     src/godeditor/GodEditor.cpp
     src/collab/CollabService.cpp
     src/collab/CollabHooks.cpp
+    src/collab/CollabLive.cpp
     src/ui/CollabPopup.cpp
     src/ui/SocialPopups.cpp
     src/gdps/GdpsService.cpp
@@ -71,6 +72,7 @@ add_library(${PROJECT_NAME} SHARED
     src/ui/GdpsPopups.cpp
     src/ui/GdpsAdminPopup.cpp
     src/ui/GdpsModPopups.cpp
+    src/ui/GdpsRatePopup.cpp
     src/gdps/GdpsModHooks.cpp
     src/services/UpdateService.cpp
 )

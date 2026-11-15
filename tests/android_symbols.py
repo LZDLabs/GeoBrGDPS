@@ -20,6 +20,9 @@ needed=['PlayerObject::pushButton(','PlayerObject::releaseButton(','PlayerObject
  'GManager::save(','GameObject::createWithKey(','GameObject::getSaveString(','ObjectToolbox::intKeyToFrame(','ObjectToolbox::sharedState(',
  # RC8: God Editor end-animation guards
  'PlayLayer::playEndAnimationToPos(','PlayLayer::playPlatformerEndAnimationToPos(',
+ # 1.12.0: live collab editor, RobTop-style rate popup, publish lock
+ 'LevelEditorLayer::createObjectsFromString(','LevelEditorLayer::removeObject(','EditorUI::deselectAll(',
+ 'GJDifficultySprite::create(','GJDifficultySprite::updateFeatureState(','EditLevelLayer::onShare(','EditorPauseLayer::saveLevel(',
  # RC9: live God Editor objects
  'GJBaseGameLayer::sortSectionVector(','GJBaseGameLayer::addToSection(','GameObject::activateObject(',
  # RC9: collab editor, credits and full player icons

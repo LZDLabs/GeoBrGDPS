@@ -43,7 +43,7 @@ name, password = sys.argv[1], sys.argv[2]
 gjp2 = hashlib.sha1((password + "mI29fmAnxgTs").encode()).hexdigest()
 
 info = api("info", {})
-ok(info["ok"] and info["version"] == "1.11.0", f"server v2 ({info.get('version')})")
+ok(info["ok"] and info["version"] == "1.12.0", f"server v2 ({info.get('version')})")
 login = gd("accounts/loginGJAccount", {"userName": name, "gjp2": gjp2, "udid": "live-v2", "secret": "Wmfv3899gc9"})
 aid = int(login.split(",")[0])
 ok(aid >= 1, f"owner login -> {login}")

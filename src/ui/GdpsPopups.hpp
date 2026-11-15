@@ -74,6 +74,7 @@ private:
     void onAccount(cocos2d::CCObject*);
     void onSwitch(cocos2d::CCObject*);
     void onPassword(cocos2d::CCObject*);
+    void onRename(cocos2d::CCObject*);
 };
 
 // Oficial <-> GDPS GeoBR (each with its own save and account; restarts the game).

@@ -11,7 +11,7 @@ import { admin } from "./routes/admin.ts";
 import * as packs from "./routes/packs.ts";
 import * as rewards from "./routes/rewards.ts";
 
-export const SERVER_VERSION = "1.11.0";
+export const SERVER_VERSION = "1.12.0";
 const MAX_BODY = 20 * 1024 * 1024;
 
 type GdHandler = (ctx: Ctx) => Promise<string> | string;
@@ -90,6 +90,7 @@ export const JSON_ROUTES: Record<string, JsonHandler> = {
   "recovery/reset": geobr.recoveryReset,
   "owner/claim": geobr.ownerClaim,
   password: geobr.passwordChange,
+  "account/rename": geobr.renameSelf,
   session: geobr.session,
   demonlist: geobr.demonList,
   "songs/search": songs.songsSearch,

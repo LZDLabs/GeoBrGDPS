@@ -148,29 +148,18 @@ void CollabService::openRoom(matjson::Value room, OpenDone done) {
         theirs = withRoom(theirs, id);
 
         auto level = localLevelFor(id);
-        bool created = false;
         if (!level) {
             level = GameLevelManager::sharedState()->createNewLevel();
             if (!level) { done(nullptr, "Nao foi possivel criar o level local"); return; }
-            created = true;
             std::string name = title.substr(0, 20);
             level->m_levelName = name;
             Mod::get()->setSavedValue("collab-local-" + id, name);
         }
-        auto local = created ? std::string() : decompress(std::string(level->m_levelString));
-        auto base = loadBase(id);
-        std::string content = theirs;
-        bool pendingLocal = base.exists && !local.empty() && local != base.level;
-        if (pendingLocal) content = withRoom(mergeLevels(base.level, local, theirs).level, id);
-        level->m_levelString = gd::string(compress(content));
+        // The editor rebuilds the level from the room's live objects; the saved
+        // level is only the starting point (and the copy kept on the device).
+        level->m_levelString = gd::string(compress(theirs));
         saveBase(id, theirs, revision);
         saveLocalLevels();
-        if (pendingLocal && content != theirs) {
-            // Local edits made offline: send the merge right away.
-            sync(id, content, [](bool ok, std::string message, std::string, bool) {
-                Notification::create(ok ? "Edicoes locais enviadas para a sala" : message, ok ? NotificationIcon::Success : NotificationIcon::Warning, 2.5f)->show();
-            });
-        }
         done(level, {});
     });
 }
@@ -217,6 +206,14 @@ void CollabService::publish(std::string const& room, int levelID) {
         else {
             Notification::create(r.error, NotificationIcon::Warning, 3.f)->show();
         }
+    });
+}
+
+void CollabService::saveSnapshot(std::string const& room, std::string const& level, std::function<void(bool, std::string)> done) {
+    if (!validRoomID(room)) { done(false, "Sala invalida"); return; }
+    m_push.rpc("geobr_collab_push", matjson::makeObject({{"p_room", room}, {"p_level", compress(level)}, {"p_base", -1}}), [done](auto r) {
+        if (!r.success) { done(false, r.error); return; }
+        done(jsonutil::boolOr(r.value, "ok", false), "Level da sala salvo");
     });
 }
 

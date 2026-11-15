@@ -174,3 +174,28 @@ export function genPack(packs: Array<{ id: number | string; stars: number; coins
   }
   return sha1(s + SALT_LEVEL);
 }
+
+/** GD reward items (SpecialRewardItem) by the names staff type in "/event". */
+const REWARD_NAMES: Record<string, number> = {
+  fogo: 1, fire: 1, gelo: 2, ice: 2, veneno: 3, poison: 3, sombra: 4, shadow: 4, lava: 5,
+  chave: 6, chaves: 6, key: 6, keys: 6, orb: 7, orbs: 7, orbe: 7, orbes: 7,
+  diamante: 8, diamantes: 8, diamond: 8, diamonds: 8, terra: 10, earth: 10, sangue: 11, blood: 11,
+  metal: 12, luz: 13, light: 13, alma: 14, soul: 14, ouro: 15, gold: 15, goldkey: 15,
+};
+
+/** "500 diamantes 1000 orbs" / "8,500,7,1000" -> "8,500,7,1000" (empty when invalid). */
+export function parseRewards(text: unknown): string {
+  const tokens = String(text ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").split(/[\s,;]+/).filter(Boolean);
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const a = tokens[i], b = tokens[i + 1] ?? "";
+    let type = 0, amount = 0;
+    if (/^\d+$/.test(a) && REWARD_NAMES[b]) { amount = Number(a); type = REWARD_NAMES[b]; i++; }
+    else if (REWARD_NAMES[a] && /^\d+$/.test(b)) { type = REWARD_NAMES[a]; amount = Number(b); i++; }
+    else if (/^\d+$/.test(a) && /^\d+$/.test(b) && Number(a) >= 1 && Number(a) <= 15 && Number(a) !== 9) { type = Number(a); amount = Number(b); i++; }
+    else return "";
+    if (amount < 1 || amount > 100000) return "";
+    out.push([type, amount]);
+  }
+  return out.slice(0, 10).map(([t, n]) => `${t},${n}`).join(",");
+}
