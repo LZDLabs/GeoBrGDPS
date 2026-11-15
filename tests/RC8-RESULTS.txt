@@ -1,0 +1,12 @@
+GeoBR 1.9.0-beta.8 — validation performed 2026-11-05
+Package SHA-256: cd68bf0d474daab0012d876c9d0578f7a7243e09af4b5b87b6e76605b5a71ab1 (dist/geobr.geobrmod.geode)
+Binary  SHA-256: af7a09d5b1c1e36b115196f8f37364612d687e97c9584eccea117a8563df28bf (geobr.geobrmod.android64.so)
+PASS clean Android64 Release build (NDK r28c, Geode SDK 5.9.0, bindings 7f6c2a75), 0 warnings, --no-undefined against the source-built loader
+PASS package_v1.py: ZIP, manifest 1.9.0-beta.8, AArch64 ELF, mod icon, 98 resources byte-identical
+PASS static_validation.py: beta.8, no bundled .gmd, RC8 migration lists the 2 new Storage paths and drops the 4 temporary policies, no CCClippingNode, no setHandlerPriority call, 16 skins, 48 units
+PASS android_symbols.py: 45 GD functions exported by libcocos2dcpp.so 2.2081 (adds PlayLayer::playEndAnimationToPos / playPlatformerEndAnimationToPos)
+PASS campaign_levels.py: 2 ORIGINAL levels (tools/design_campaign.py): teoria-tropical 2626 objects / 2 Arrow portals (song #11), bloqueio-total 3831 objects / 3 Arrow portals (song #19); ground y=0, all blocks on the grid with the right outline piece, rebuild identical re-validating 30 sections (cube/ball/Arrow exhaustive input search, ship/UFO pilot, 3 physics variants each)
+PASS host: ArrowPhysics 268, TextSanitizer 11, Models 20, ShopOrder
+PASS Storage upload (geobr-main-levels/main-levels/geobr-{teoria-tropical,bloqueio-total}-v1.gmd), public download byte-identical; RobTop-based rc8 files deleted from the bucket
+PENDING migration 20261105180000_geobr_rc8_campaign.sql (drops the temporary exact-name policies, lists the 2 levels, enables beta.8): Supabase asked for confirmation, no answer yet
+NOT RUN Geometry Dash on a device/emulator. See RC8.md checklist.

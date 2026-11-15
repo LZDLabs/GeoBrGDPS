@@ -1,0 +1,45 @@
+GeoBR GDPS v2 (1.10.0-beta.2) - resultados reais (2026-11-13)
+
+Builds Android arm64 Release limpos (NDK r28c, Geode SDK 5.9.0, -Wl,--no-undefined)
+  /opt/tc/build-rc10: geobr.geobrmod.geode (104 entries) - 0 erros, 0 warnings no codigo do mod
+  /opt/tc/build-core2: geobr.gdps.geode 1.0.1 (3 entries) - 0 erros, 0 warnings
+  sha256 dist/geobr.geobrmod.geode 12354dc8df646605ba5ecef2b7c66acc063dad60871c5d38b67e39af08be5965
+  sha256 dist/geobr.gdps.geode     95e02a8a4506d6f9d31f610f745d761c872cfeadb8c07a44e7d0a24f1cd1a380 (1.0.1)
+
+Servidor local: supabase/functions/gdps/tests/run_local.sh (migracoes v1+v2, 2x)
+  ok | 1 passed (27 steps) | 0 failed
+  novos: Map Packs and Gauntlets, Level lists, chests and quests from the GDPS, comment commands and mutes, password change keeps the account
+  IDs: primeira conta = 1, primeiro level = 1
+
+Migracao v2 (versao sem DELETE, aplicada em producao em 2026-11-13)
+  dados do teste de 08/11 escondidos, nao apagados: contas GeoBRTeste 900000001-2 banidas e fora do ranking, level 900000001 marcado como apagado
+  esquema de producao = esquema local (assinatura 2f9dd04d6d0a065c7bc85b9d187772c5: 262 colunas, 28 tabelas, 74 indices)
+  sequencias: contas reiniciadas em 1, levels em 1 (proximo level publicado = ID 1)
+
+tests/live_gdps_v2.py contra servidor local por HTTP (tests/serve_local.ts)
+  PASS live_gdps_v2: 14 checks (no test data written) - Luiz ID 1, Owner, requestUserAccess = 2 (Elder), selo 49:2
+
+Host: ArrowPhysics 268, CollabMerge 19, gdps_routing 24, Models 20, ShopOrder PASS, TextSanitizer 11
+android_symbols.py: PASS 78 funcoes. static_validation.py, package_v1.py, package_core.py: PASS
+
+Producao (Supabase nolfgjsnnleqpmzvmebo), 2026-11-13
+  funcao gdps versao 2 publicada (verify_jwt = false); os 15 arquivos publicados conferidos byte a byte com os locais: OK
+  geobr/info -> {"ok":true,"server":"GeoBR GDPS","version":"1.10.0-beta.2"}
+  registerGJAccount Luiz -> 1; conta Luiz = ID 1; cargo Owner (permissoes "*") concedido por INSERT, registrado na auditoria
+  tests/live_gdps_v2.py Luiz <senha provisoria> contra producao: PASS live_gdps_v2: 14 checks (no test data written)
+  leitura: busca GeoBRTeste -> -1, level 900000001 -> -1, levels recentes -> -1, ranking -> -1, gauntlets -> -1, busca Luiz -> 1:Luiz:2:1
+  logs da funcao: todas as respostas HTTP 200, nenhum erro
+  suite local repetida com a migracao aplicada: ok | 1 passed (27 steps) | 0 failed
+
+NAO executado: GD no aparelho (separacao de saves, botoes, Req, rate pelo jogo).
+
+Correcao 1.0.1 do geobr.gdps (relato no aparelho, 2026-11-13)
+  erro no Geode: dlopen failed: library "hjfod.gmd-api.android64.so" not found: needed by geobr.gdps.android64.so
+  causa: tools/build_android64.sh copiava para todo build as dependencias do mod principal (gmd-api, more_icons);
+         o Geode SDK liga toda biblioteca em <build>/geode-deps, entao o geobr.gdps (early-load, sem dependencias) ficou ligado ao gmd-api
+  correcao: o script so copia as dependencias declaradas no mod.json do proprio mod; geobr.gdps refeito do zero em /opt/tc/build-core2
+  novo teste tests/elf_needed.py (le DT_NEEDED do .so) usado por package_core.py e package_v1.py:
+    pacote antigo 1.0.0 -> FALHA: ['hjfod.gmd-api.android64.so'] (reproduz o erro do aparelho)
+    pacote novo 1.0.1 -> PASS, NEEDED = libc, libcocos2dcpp, libfmod, libGLESv2, liblog, Geode.android64, libm, libdl
+    mod principal (sem mudanca, mesmo sha256) -> PASS, NEEDED inclui so hjfod.gmd-api, que e dependencia declarada
+  mod principal recompilado pelo script corrigido: geode-deps = hiimjustin000.more_icons, hjfod.gmd-api; package_v1 PASS

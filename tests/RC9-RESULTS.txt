@@ -1,0 +1,11 @@
+GeoBR 1.9.0-beta.9 — validation performed 2026-11-07
+Package SHA-256: caf38a4a54893ef3fd0743e47707030ea84ff400c2d624faf234a5498b13557b (dist/geobr.geobrmod.geode)
+Binary  SHA-256: 99c7dc333bc4bf3bd590351a256a91f37d5345e7ac3a02ac1f2d46ead2680274 (geobr.geobrmod.android64.so)
+PASS clean Android64 Release build (NDK r28c, Geode SDK 5.9.0, bindings 7f6c2a75), 0 warnings, --no-undefined against the source-built loader
+PASS package_v1.py: ZIP, manifest 1.9.0-beta.9, AArch64 ELF, mod icon, 99 resources byte-identical (adds geobr-collab-icon.png)
+PASS static_validation.py: beta.9, RC9 migration functions, collab icon, collab hooks only add geobr-* menus (no hiding/re-layout of native nodes), live editor merge, 52 units
+PASS android_symbols.py: 63 GD functions hooked/called (adds collab: LevelBrowserLayer/EditorUI/EditorPauseLayer/UploadPopup/LevelCell/LevelInfoLayer hooks, editor object add/remove, God Editor section refresh, glow) exported by libcocos2dcpp.so 2.2081
+PASS campaign_levels.py (RC8 levels unchanged)
+PASS host: CollabMerge 19, ArrowPhysics 268, TextSanitizer 11, Models 20, ShopOrder
+NOT RUN migration 20261107120000_geobr_rc9_collab_groups.sql dry-run + tests/live_rc9.sql: Supabase asked for confirmation twice (apply RC8, dry-run RC9), no answer. Nothing of RC8/RC9 is applied on the server yet.
+NOT RUN Geometry Dash on a device/emulator. See RC9.md checklist.

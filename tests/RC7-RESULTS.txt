@@ -1,0 +1,10 @@
+GeoBR 1.9.0-beta.7 — validation performed 2026-11-05
+PASS clean Android64 Release build (NDK r28c, Geode SDK 5.9.0, bindings 7f6c2a75), 0 warnings, --no-undefined against the source-built loader
+PASS package_v1.py: ZIP, manifest 1.9.0-beta.7, AArch64 ELF, mod icon, 100 resources byte-identical
+PASS static_validation.py: 16 Arrow skins mirrored by server items, one exclusive per crate rarity, God Editor icon, 2 campaign levels, 48 units
+PASS android_symbols.py: 43 GD functions (Arrow, icon kit tab, God Editor) exported by libcocos2dcpp.so 2.2081
+PASS campaign_levels.py: both .gmd decode like GD, official songs 11/19, Arrow portals (1 and 2), corridor bounds, ~93s/~106s at 1x
+PASS host: ArrowPhysics 268, TextSanitizer 11, Models 20, ShopOrder
+PASS RC7 migration dry-run (ROLLBACK), applied as geobr_rc7_arrow_items, live_rc7.sql on the applied schema (ROLLBACK)
+Security advisor: zero ERROR. No test fixtures left.
+NOT RUN Geometry Dash on a device/emulator. See RC7.md checklist.

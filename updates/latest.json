@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "notes": "Rate pelo botao de estrelas do GD, collab corrigido, sem Demon List, saves separados no PC e no celular.",
+  "packages": [
+    {
+      "id": "geobr.geobrmod",
+      "name": "GeoBR",
+      "version": "1.11.0",
+      "files": {
+        "android64": {
+          "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
+          "sha256": "c5b860008d7ec6d2a3564fb87b09553ac2f4ea34ddec6277c4663e8ecb889e27"
+        }
+      }
+    },
+    {
+      "id": "geobr.gdps",
+      "name": "GeoBR GDPS",
+      "version": "1.0.2",
+      "files": {
+        "android64": {
+          "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.gdps.geode",
+          "sha256": "0cecbba90d2bd6558da4ad0d1c8c92cec017ff78c613a270b7596f0bb2dff61e"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+[  5%] Built target fmt
+[  8%] Built target asp
+[ 12%] Built target arc
+[ 41%] Built target GeodeBindings
+[ 43%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/TierShopPopup.cpp.o
+[ 44%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/GeoPlayersPopup.cpp.o
+[ 46%] Building CXX object CMakeFiles/GeoBRMod.dir/src/hooks/ProfileAppearanceHook.cpp.o
+[ 48%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/AdminPanel.cpp.o
+[ 50%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/AdminForm.cpp.o
+[ 51%] Building CXX object CMakeFiles/GeoBRMod.dir/src/services/PlayerService.cpp.o
+[ 53%] Building CXX object CMakeFiles/GeoBRMod.dir/src/services/NewsService.cpp.o
+[ 55%] Building CXX object CMakeFiles/GeoBRMod.dir/src/services/CommunityService.cpp.o
+[ 56%] Building CXX object CMakeFiles/GeoBRMod.dir/src/services/MainLevelsService.cpp.o
+[ 58%] Building CXX object CMakeFiles/GeoBRMod.dir/src/services/MainLevelLauncher.cpp.o
+[ 60%] Building CXX object CMakeFiles/GeoBRMod.dir/src/services/MainLevelProgress.cpp.o
+[ 62%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/UIHelpers.cpp.o
+[ 63%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/GeoBRHubLayer.cpp.o
+[ 65%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/GeoBRMainLevelsLayer.cpp.o
+[ 67%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/NewsTab.cpp.o
+[ 68%] Building CXX object CMakeFiles/GeoBRMod.dir/src/ui/CommunityTab.cpp.o
+[ 70%] Building CXX object CMakeFiles/GeoBRMod.dir/src/hooks/CreatorLayerHook.cpp.o
+[ 72%] Building CXX object CMakeFiles/GeoBRMod.dir/src/hooks/MainLevelProgressHook.cpp.o
+[ 74%] Building CXX object CMakeFiles/GeoBRMod.dir/src/gameplay/GeoBRRobotPack.cpp.o
+[ 75%] Building CXX object CMakeFiles/GeoBRMod.dir/src/utils/TextSanitizer.cpp.o
+[ 77%] Building CXX object CMakeFiles/GeoBRMod.dir/workspace/scratch/d4659cbbc46d/toolchain/geode-sdk/entry.cpp.o
+[ 79%] Linking CXX shared library geobr.geobrmod.android64.so
+[100%] Built target GeoBRMod
+| Info | Copying files
+| Info | Zipping
+| Done | Successfully packaged geobr.geobrmod.geode
+[100%] Built target GeoBRMod_PACKAGE

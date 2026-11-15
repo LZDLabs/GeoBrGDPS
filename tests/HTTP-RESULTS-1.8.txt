@@ -1,0 +1,4 @@
+PASS HTTP: comprar tema, repetir pedido sem novo debito e equipar
+PASS HTTP: titulo, skip de quest e skip de etapa sem inflar nivel pessoal
+PASS HTTP: saldo insuficiente, RLS da carteira, perfil, busca e arte equipada publica
+Test session signed out. Remove only its auth.users row to clean up.

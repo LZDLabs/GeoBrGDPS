@@ -1,0 +1,8 @@
+build/
+build-*/
+*.geode
+!dist/*.geode
+.cache/
+__pycache__/
+node_modules/
+dist/*-Fonte.zip

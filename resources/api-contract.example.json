@@ -1,0 +1,37 @@
+{
+  "news": {
+    "method": "GET",
+    "path": "/api/news"
+  },
+  "communityGet": {
+    "method": "GET",
+    "path": "/api/community/messages"
+  },
+  "communityPost": {
+    "method": "POST",
+    "path": "/api/community/messages"
+  },
+  "mainLevelsSupabase": {
+    "method": "GET",
+    "path": "/rest/v1/geobr_main_levels?select=id,campaign_order,name,creator,description,difficulty,stars,song,platformer,gmd_path,file_version,published&published=eq.true&order=campaign_order.asc,id.asc",
+    "headers": {
+      "apikey": "PUBLISHABLE_KEY"
+    },
+    "response": [
+      {
+        "id": 1001,
+        "campaign_order": 1,
+        "name": "Brasil Infinito",
+        "creator": "Equipe GeoBR",
+        "description": "A primeira aventura oficial da campanha GeoBR.",
+        "difficulty": "Normal",
+        "stars": 3,
+        "song": "Tema GeoBR I",
+        "platformer": false,
+        "gmd_path": "main-levels/brasil-infinito.gmd",
+        "file_version": 1,
+        "published": true
+      }
+    ]
+  }
+}

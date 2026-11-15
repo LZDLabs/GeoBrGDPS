@@ -1,0 +1,22 @@
+{
+  "geode": "5.9.0",
+  "gd": {
+    "android": "2.2081"
+  },
+  "id": "geobr.gdps",
+  "name": "GeoBR GDPS",
+  "version": "1.0.2",
+  "developer": "GeoBR",
+  "description": "Servidor do GD: Oficial ou GDPS GeoBR. Cada servidor tem seu proprio save e sua propria conta.",
+  "early-load": true,
+  "settings": {
+    "server": {
+      "type": "string",
+      "default": "Oficial",
+      "one-of": ["Oficial", "GDPS GeoBR"],
+      "name": "Servidor",
+      "description": "Oficial: o GD normal, com seu save e sua conta de sempre. GDPS GeoBR: o servidor GeoBR, com save e conta separados. O jogo reinicia para trocar.",
+      "requires-restart": true
+    }
+  }
+}

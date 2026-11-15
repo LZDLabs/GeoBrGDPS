@@ -1,0 +1,13 @@
+GeoBR 1.9.0-beta.5 — validation performed 2026-10-15
+PASS actual Android64 compilation, Clang 19 / NDK r28c / Geode SDK 5.9.0
+PASS package ZIP integrity, manifest, AArch64 ELF, approved textures and backend RPC symbols
+PASS live_rc5.sql: non-admin denial, mute, automatic expiry, chat-only ban, mod ban, revocation, disabled-version denial, audit log, unread DM count and read tracking
+PASS live_rc4.sql: multi-item rewards, repeat opening idempotency, privacy, exclusive cosmetics, duplicate conversion and legacy single-item compatibility
+PASS live_progression_v3.sql: XP levels, crate rewards, skip/run validation, pass claims, TOP edits, future-season preview/publish idempotency and random skin pool bounds
+PASS live_v1_regression.sql: quest/reward deduplication, DM participant privacy, blocking, profile identity and non-admin rank denial
+PASS HTTP public geobr_chat_feed: API reachable, array response includes avatar/reply fields
+PASS static_validation.py, progression_layout.py, rc4_event_contract.py, package_v1.py
+PASS no test fixtures remain; no real player restrictions; beta.4 and beta.5 enabled; TOP 1 level 1111 preserved
+Security advisor: zero ERROR. Expected private-schema deny-by-default tables; anonymous auth and leaked-password-protection warnings inherited from previous project setup.
+The broad restrictive SELECT policy proposal was rejected before execution; zero geobr_release_access policies were created. It is not included in the release.
+NOT RUN Geometry Dash device/emulator runtime, Android keyboard interaction, visual layout in GD, or compatibility with other installed mods. See RC5.md device checklist.

@@ -1,0 +1,12 @@
+PASS: migration applies on PostgreSQL with prerequisite schema
+PASS: Retry does not duplicate message
+PASS: Unrelated user cannot read DMs
+PASS: Thread RPC does not disclose other conversations
+PASS: Recipient can read message
+PASS: Recipient gets one notification
+PASS: Blocked conversation rejects sends
+PASS: Player cannot edit ranking
+PASS: Twelve new quest definitions inserted
+PASS: Player cannot forge a verified GDPS link
+PASS: Native profile lookup uses owner-managed account link
+ALL CHECKS PASSED

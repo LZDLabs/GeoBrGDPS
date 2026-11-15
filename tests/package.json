@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node social_security_test.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.3.14"
+  }
+}

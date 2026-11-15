@@ -1,0 +1,15 @@
+GeoBR 1.9.0-beta.6 — validation performed 2026-10-31
+PASS Android64 Release build, Clang 19.0.1 / NDK r28c / Geode SDK 5.9.0 / bindings 7f6c2a75, 0 warnings, linked with --no-undefined
+PASS RC5 baseline (unmodified) builds and passes RC5 package_v1.py on the same toolchain
+PASS package_v1.py: ZIP integrity, manifest 1.9.0-beta.6, single AArch64 ELF, 49 resources byte-identical
+PASS static_validation.py: manifest, 10 theme banners, 4 Arrow skins x 4 layers, portal art, 46 compilation units, no admin literal, no service_role
+PASS android_symbols.py: 27 hooked/called GD functions exported by libcocos2dcpp.so 2.2081
+PASS ArrowPhysicsTests (host): 268 checks — toggle input, inactive passthrough, portal entry while held, speed caching, fallback, gravity, voted mapping, checkpoint restore, travel angle, 45-degree invariant
+PASS TextSanitizerTests (host): 11 tests incl. invalid UTF-8
+PASS ModelParsingTests (host): 20 validations
+PASS shop_order_test (host)
+PASS migration dry-run with ROLLBACK, then applied as geobr_rc6_arrow_identity
+PASS live_rc6.sql on the live project (ROLLBACK): chat name bound to profile, arrow RPC + validation, native profile exposure, grants, release rows
+PASS live_rc5.sql regression on the RC6 schema with the beta.6 header (ROLLBACK)
+Security advisor: zero ERROR; only the warnings inherited from RC5.
+NOT RUN Geometry Dash on a device/emulator, touch input, visual layout in GD, other installed mods. See RC6.md checklist.
