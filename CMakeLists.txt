@@ -7,9 +7,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # atomic_ref and no longer exposes every trait transitively. Force a narrow
 # compatibility header into C++ targets until the upstream dependencies no
 # longer rely on those library details.
-add_compile_options(
-    "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/src/compat/NdkStdCompat.hpp>"
-)
+# NDK r28 libc++ shim: Android only (clang-cl would read the path as a source file).
+if(ANDROID)
+    add_compile_options(
+        "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/src/compat/NdkStdCompat.hpp>"
+    )
+endif()
 add_library(${PROJECT_NAME} SHARED
     src/services/AccessService.cpp
     src/ui/AdminSafetyPopup.cpp

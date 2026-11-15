@@ -9,6 +9,9 @@
 #include <Geode/modify/AccountLoginLayer.hpp>
 #include <Geode/modify/AccountRegisterLayer.hpp>
 #include <Geode/modify/GJAccountManager.hpp>
+#ifdef GEODE_IS_WINDOWS
+#include <Geode/modify/AccountHelpLayer.hpp>
+#endif
 
 using namespace geode::prelude;
 using namespace geobr;
@@ -43,6 +46,17 @@ class $modify(GeoBRGdpsLogin, AccountLoginLayer) {
 };
 
 // Logging out of a GDPS account goes back to the device's guest profile.
+#ifdef GEODE_IS_WINDOWS
+// On Windows GJAccountManager::unlinkFromAccount is inlined; GD logs out from
+// AccountHelpLayer's confirmation alert, so the account is checked around it.
+class $modify(GeoBRGdpsAccountHelp, AccountHelpLayer) {
+    void FLAlert_Clicked(FLAlertLayer* layer, bool btn2) {
+        bool wasGdps = gdps::enabled() && GJAccountManager::get()->m_accountID > 0;
+        AccountHelpLayer::FLAlert_Clicked(layer, btn2);
+        if (wasGdps && GJAccountManager::get()->m_accountID <= 0) gdps::restoreGuestProfile();
+    }
+};
+#else
 class $modify(GeoBRGdpsAccount, GJAccountManager) {
     void unlinkFromAccount() {
         bool wasGdps = gdps::enabled() && m_accountID > 0;
@@ -50,3 +64,4 @@ class $modify(GeoBRGdpsAccount, GJAccountManager) {
         if (wasGdps) gdps::restoreGuestProfile();
     }
 };
+#endif
