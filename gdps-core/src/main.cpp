@@ -28,7 +28,12 @@ constexpr char const* GdpsFolder = "geobr-gdps/";
 // Decided once: switching servers always restarts the game.
 bool gdpsSession() {
     static bool const active = [] {
-        bool on = Mod::get()->getSettingValue<std::string>("server") == "GDPS GeoBR";
+        bool wants = Mod::get()->getSettingValue<std::string>("server") == "GDPS GeoBR";
+        // The two mods go together: without GeoBR installed and enabled, GD stays official.
+        auto geobrMod = Loader::get()->getInstalledMod("geobr.geobrmod");
+        bool paired = geobrMod && geobrMod->isOrWillBeEnabled();
+        if (wants && !paired) log::warn("GeoBR GDPS: o mod GeoBR nao esta instalado/ativo; o GD fica no servidor oficial");
+        bool on = wants && paired;
         Mod::get()->setSavedValue<std::string>("active-server", on ? "gdps" : "oficial");
         log::info("GeoBR GDPS: server for this session: {}", on ? "GDPS GeoBR (separate save)" : "Oficial");
         return on;

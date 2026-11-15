@@ -72,29 +72,35 @@ GdpsPrompt* GdpsPrompt::create(std::string const& title, std::string const& body
 }
 
 bool GdpsPrompt::init(std::string const& title, std::string const& body, std::vector<Field> fields, std::vector<std::string> buttons, Done done) {
-    float spacing = fields.size() > 4 ? 30.f : 38.f;
-    float height = 96.f + spacing * fields.size() + (body.empty() ? 0.f : 26.f);
-    CCSize size {380.f, height};
+    // Many fields (e.g. one per level ID) go in two columns so the form fits phone and PC screens.
+    bool twoColumns = fields.size() > 5;
+    size_t rows = twoColumns ? (fields.size() + 1) / 2 : fields.size();
+    float spacing = rows > 4 ? 30.f : 38.f;
+    float height = 96.f + spacing * rows + (body.empty() ? 0.f : 26.f);
+    CCSize size {twoColumns ? 470.f : 380.f, height};
     if (!Popup::init(size.width, size.height)) return false;
     frame(this, m_mainLayer, m_bgSprite, size);
     setTitle(title, "goldFont.fnt", .6f, 15);
     m_done = std::move(done);
     float y = height - 44.f;
     if (!body.empty()) {
-        text(m_mainLayer, body, {size.width / 2, y}, .5f, 350, ui::palette::TextSoft, "chatFont.fnt");
+        text(m_mainLayer, body, {size.width / 2, y}, .5f, size.width - 30.f, ui::palette::TextSoft, "chatFont.fnt");
         y -= 26.f;
     }
-    for (auto const& f : fields) {
-        text(m_mainLayer, f.label, {22, y}, .45f, 120, {216, 236, 255}, "chatFont.fnt", true);
-        auto input = TextInput::create(210, f.label);
+    for (size_t i = 0; i < fields.size(); ++i) {
+        auto const& f = fields[i];
+        float rowY = twoColumns ? y - float(i % rows) * spacing : y - float(i) * spacing;
+        float left = twoColumns && i >= rows ? 240.f : 0.f;
+        float labelWidth = twoColumns ? 78.f : 120.f, inputWidth = twoColumns ? 130.f : 210.f;
+        text(m_mainLayer, f.label, {left + 16, rowY}, .42f, labelWidth, {216, 236, 255}, "chatFont.fnt", true);
+        auto input = TextInput::create(inputWidth, f.label);
         input->setCommonFilter(f.filter);
         input->setMaxCharCount(f.max);
         input->setString(f.value);
         if (f.password) input->setPasswordMode(true);
-        input->setPosition({252, y});
+        input->setPosition({twoColumns ? left + 160.f : 252.f, rowY});
         m_mainLayer->addChild(input, 4);
         m_inputs.push_back(input);
-        y -= spacing;
     }
     auto menu = CCMenu::create();
     menu->setPosition({0, 0});

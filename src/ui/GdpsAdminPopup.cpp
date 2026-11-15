@@ -2,6 +2,8 @@
 // for this account; every action is checked again on the server.
 #include "GdpsPopups.hpp"
 #include "GdpsRatePopup.hpp"
+#include "AdminPanel.hpp"
+#include <Geode/binding/GJAccountManager.hpp>
 #include "GeoBRVisuals.hpp"
 #include "UIHelpers.hpp"
 #include "../models/JsonModelUtils.hpp"
@@ -149,7 +151,7 @@ void GdpsAdminPopup::buildTools() {
     std::vector<std::string> labels;
     bool search = false;
     switch (m_tab) {
-        case Stats: labels = {"Atualizar"}; break;
+        case Stats: labels = jsonutil::boolOr(m_me, "owner", false) ? std::vector<std::string>{"Atualizar", "Painel GeoBR"} : std::vector<std::string>{"Atualizar"}; break;
         case Players: search = true; labels = {"Buscar"}; break;
         case Levels: search = true; labels = {"Buscar", "Denuncias", "Sugeridos", "Listas"}; break;
         case Comments: search = true; labels = {"Buscar"}; break;
@@ -186,6 +188,9 @@ void GdpsAdminPopup::onTool(CCObject* sender) {
         case Players: case Comments: m_sub = 0; m_query = query; break;
         case Levels: m_sub = tool; m_query = query; break;
         case Songs: m_sub = tool; break;
+        case Stats:
+            if (tool == 1) { openGeoBRPanel(); return; }
+            break;
         case Packs:
             if (tool == 2) { editPack(matjson::Value::object()); return; }
             if (tool == 3) { editGauntlet(matjson::Value::object()); return; }
@@ -555,16 +560,57 @@ void GdpsAdminPopup::onRow(int index, int button) {
     }
 }
 
+namespace {
+std::vector<std::string> splitIds(std::string const& text) {
+    std::vector<std::string> out;
+    std::string current;
+    for (char c : text + ",") {
+        if (std::isdigit(static_cast<unsigned char>(c))) current += c;
+        else if (!current.empty()) { out.push_back(current); current.clear(); }
+    }
+    return out;
+}
+std::string joinIds(std::vector<std::string> const& ids) {
+    std::string out;
+    for (auto const& id : ids) if (!id.empty()) out += (out.empty() ? "" : ",") + id;
+    return out;
+}
+} // namespace
+
+// The GeoBR panel (news, notices, pass, quests, Main Levels, shop, ranking,
+// accounts) for the GDPS Owner: the Owner's GDPS account opens the 20-minute
+// admin session on the server, instead of the old panel password.
+void GdpsAdminPopup::openGeoBRPanel() {
+    auto am = GJAccountManager::sharedState();
+    if (!am || gdps::accountID() <= 0) { status("Entre na conta GDPS do Owner."); return; }
+    status("Abrindo o Painel GeoBR...");
+    WeakRef<GdpsAdminPopup> weak = this;
+    m_bridge.rpc("geobr_admin_login_gdps", matjson::makeObject({{"p_account", gdps::accountID()}, {"p_gjp2", std::string(am->m_GJP2)}}), [weak](auto r) {
+        auto self = weak.lock();
+        if (!self) return;
+        if (!r.success || !jsonutil::boolOr(r.value, "ok", false)) {
+            self->status(r.success ? jsonutil::stringOr(r.value, "error", "Acesso negado.") : r.error);
+            return;
+        }
+        self->status("Painel GeoBR aberto (sessao de 20 minutos).");
+        if (auto panel = AdminPanel::create()) panel->show();
+    });
+}
+
 void GdpsAdminPopup::editPack(matjson::Value pack) {
     auto id = num(pack, "id");
+    // One field per level ID (GD's Map Packs have 3 levels).
+    auto ids = splitIds(str(pack, "level_ids"));
+    auto idAt = [&](size_t i) { return i < ids.size() ? ids[i] : std::string(); };
     auto prompt = GdpsPrompt::create(id ? fmt::format("Map Pack #{}", id) : "Novo Map Pack",
-        "Levels: IDs separados por virgula. Dificuldade: 0 Auto a 5 Insane, 6 a 10 Demons. Cor: #RRGGBB.",
-        {{"Nome", str(pack, "name"), CommonFilter::Any, 40}, {"Levels", str(pack, "level_ids"), CommonFilter::Any, 120},
+        "Dificuldade: 0 Auto a 5 Insane, 6 a 10 Demons. Cor: #RRGGBB.",
+        {{"Nome", str(pack, "name"), CommonFilter::Any, 40},
+         {"ID level 1", idAt(0), CommonFilter::Uint, 10}, {"ID level 2", idAt(1), CommonFilter::Uint, 10}, {"ID level 3", idAt(2), CommonFilter::Uint, 10},
          {"Estrelas", id ? str(pack, "stars") : "0", CommonFilter::Uint, 2}, {"Moedas", id ? str(pack, "coins") : "0", CommonFilter::Uint, 2},
          {"Dificuldade", id ? str(pack, "difficulty") : "0", CommonFilter::Uint, 2}, {"Cor", str(pack, "text_color").empty() ? "#ffffff" : str(pack, "text_color"), CommonFilter::Any, 11}},
         {"Salvar", "Cancelar"}, [this, id](int b, auto const& v) {
             if (b != 0) return;
-            auto body = matjson::makeObject({{"name", v[0]}, {"levels", v[1]}, {"stars", toInt(v[2])}, {"coins", toInt(v[3])}, {"difficulty", toInt(v[4])}, {"text_color", v[5]}, {"bar_color", v[5]}});
+            auto body = matjson::makeObject({{"name", v[0]}, {"levels", joinIds({v[1], v[2], v[3]})}, {"stars", toInt(v[4])}, {"coins", toInt(v[5])}, {"difficulty", toInt(v[6])}, {"text_color", v[7]}, {"bar_color", v[7]}});
             if (id) body["pack_id"] = id;
             act("packs.save", body, "Map Pack salvo.");
         });
@@ -575,10 +621,15 @@ void GdpsAdminPopup::editGauntlet(matjson::Value gauntlet) {
     auto id = num(gauntlet, "id");
     auto prompt = GdpsPrompt::create(id ? fmt::format("Gauntlet {}", id) : "Gauntlet",
         "Tipo: 1 Fire, 2 Ice, 3 Poison, 4 Shadow, 5 Lava, 6 Bonus, 7 Chaos, 8 Demon, 9 Time, 10 Crystal... Exatamente 5 levels.",
-        {{"Tipo (1-99)", id ? std::to_string(id) : "1", CommonFilter::Uint, 2}, {"5 levels", str(gauntlet, "level_ids"), CommonFilter::Any, 80}},
+        [&] {
+            auto ids = splitIds(str(gauntlet, "level_ids"));
+            std::vector<GdpsPrompt::Field> fields = {{"Tipo (1-99)", id ? std::to_string(id) : "1", CommonFilter::Uint, 2}};
+            for (size_t i = 0; i < 5; ++i) fields.push_back({fmt::format("ID level {}", i + 1), i < ids.size() ? ids[i] : std::string(), CommonFilter::Uint, 10});
+            return fields;
+        }(),
         {"Salvar", "Cancelar"}, [this](int b, auto const& v) {
             if (b != 0) return;
-            act("gauntlets.save", matjson::makeObject({{"gauntlet_id", toInt(v[0])}, {"levels", v[1]}}), "Gauntlet salva.");
+            act("gauntlets.save", matjson::makeObject({{"gauntlet_id", toInt(v[0])}, {"levels", joinIds({v[1], v[2], v[3], v[4], v[5]})}}), "Gauntlet salva.");
         });
     if (prompt) prompt->show();
 }

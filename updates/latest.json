@@ -1,34 +1,34 @@
 {
   "format": 1,
-  "notes": "Collab ao vivo, rate igual ao da RobTop, /daily /weekly /event e mudar o nome da conta.",
+  "notes": "Versao final: GeoBR so no GDPS, skin no chat, Painel GeoBR no painel do dono, IDs separados nos packs.",
   "packages": [
     {
       "id": "geobr.geobrmod",
       "name": "GeoBR",
-      "version": "1.12.0",
+      "version": "1.13.0",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "4a10ae9cd3bbc5c59a0eb6fd86e03fc0520b770b5c3a885fcaecbba68e4b9e3e"
+          "sha256": "27bec838e57a2fdf0bb5cecf4051faffd7960092930e9c376e2f3a16823941dd"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "4a10ae9cd3bbc5c59a0eb6fd86e03fc0520b770b5c3a885fcaecbba68e4b9e3e"
+          "sha256": "27bec838e57a2fdf0bb5cecf4051faffd7960092930e9c376e2f3a16823941dd"
         }
       }
     },
     {
       "id": "geobr.gdps",
       "name": "GeoBR GDPS",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.gdps.geode",
-          "sha256": "222ab5964ef20637bc3a4405faa6d18f69ba9cbf727af0a30391573c59904c3a"
+          "sha256": "ccacd39f9c8a627b7b278b4f780f624411a514f3bcbbd5f49e4438423487b2d5"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.gdps.geode",
-          "sha256": "222ab5964ef20637bc3a4405faa6d18f69ba9cbf727af0a30391573c59904c3a"
+          "sha256": "ccacd39f9c8a627b7b278b4f780f624411a514f3bcbbd5f49e4438423487b2d5"
         }
       }
     }

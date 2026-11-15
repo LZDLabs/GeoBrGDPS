@@ -6,7 +6,7 @@
   },
   "id": "geobr.gdps",
   "name": "GeoBR GDPS",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "developer": "GeoBR",
   "description": "Servidor do GD: Oficial ou GDPS GeoBR. Cada servidor tem seu proprio save e sua propria conta.",
   "early-load": true,

@@ -1,6 +1,6 @@
 #include "ui/GeoBRHubLayer.hpp"
 #include "services/AccessService.hpp"
-#include "ui/AdminPanel.hpp"
+#include "gdps/GdpsService.hpp"
 #include "services/GeoPassService.hpp"
 #include "services/RankService.hpp"
 #include "gameplay/GeoBRRobotPack.hpp"
@@ -9,9 +9,18 @@
 #include <Geode/modify/MenuLayer.hpp>
 #include "collab/CollabService.hpp"
 using namespace geode::prelude;
-$on_mod(Loaded){geobr::registerGeoBRRobotPack();}
+// GeoBR works only on the GDPS. On the official server every hook of this mod
+// is switched off except the main menu's server button (and update check), so
+// GD stays vanilla; the GeoBR admin panel now opens from the GDPS Owner panel.
+$on_mod(Loaded){
+ if(!geobr::gdps::enabled()){
+  for(auto hook:Mod::get()->getHooks())if(hook->getPriority()!=geobr::gdps::ServerMenuHookPriority)(void)hook->disable();
+  log::info("GeoBR: servidor oficial, mod em espera (so o botao de servidor fica ativo)");
+  return;
+ }
+ geobr::registerGeoBRRobotPack();
+}
 class $modify(GeoBRMenuLayer,MenuLayer){
- struct Fields{int taps=0;Ref<CCObject> sender;};
  bool init(){
   if(!MenuLayer::init())return false;geobr::AccessService::get()->start();geobr::GeoPassService::get()->start();geobr::collab::CollabService::get()->start();static bool ranked=false;if(!ranked){ranked=true;geobr::RankService::get()->start();}
   auto sprite=ButtonSprite::create("GeoBR",82,true,"bigFont.fnt","GJ_button_01.png",31,.48f);auto b=CCMenuItemSpriteExtra::create(sprite,this,menu_selector(GeoBRMenuLayer::onOpenGeoBR));b->setID("geobr-button");
@@ -20,10 +29,4 @@ class $modify(GeoBRMenuLayer,MenuLayer){
   return true;
  }
  void onOpenGeoBR(CCObject*){if(!geobr::AccessService::get()->allowed())return;if(auto p=geobr::GeoBRHubLayer::create())p->show();}
- void onMoreGames(CCObject* sender){
-  unschedule(schedule_selector(GeoBRMenuLayer::finishMoreGames));m_fields->sender=sender;
-  if(++m_fields->taps>=8){m_fields->taps=0;m_fields->sender=nullptr;if(auto p=geobr::AdminLogin::create())p->show();return;}
-  scheduleOnce(schedule_selector(GeoBRMenuLayer::finishMoreGames),.8f);
- }
- void finishMoreGames(float){auto sender=m_fields->sender;m_fields->taps=0;m_fields->sender=nullptr;MenuLayer::onMoreGames(sender.data());}
 };

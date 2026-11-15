@@ -1,4 +1,4 @@
-# GDPS GeoBR — 1.12.0 (Android e PC)
+# GDPS GeoBR — 1.13.0 (Android e PC)
 
 São **dois arquivos**, instalados pelo Geode:
 
@@ -10,6 +10,18 @@ São **dois arquivos**, instalados pelo Geode:
 > **Status do servidor (13/11):** a v2 está no ar. O banco foi atualizado, a função `gdps` está na versão 2 e a conta **Luiz** (ID 1, Owner) foi criada. O teste ao vivo contra o Supabase real passou. Os dados do teste de 08/11 foram **escondidos, não apagados**: as contas `GeoBRTeste` estão banidas e fora do ranking, e o level de teste está marcado como apagado. Assim a migração não precisou de nenhuma confirmação sua.
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
+
+## 1.13.0 (15/11, versão final)
+
+| Pedido | Feito | Testado |
+|---|---|---|
+| Skin no chat | O Chat Geral, o chat do collab e o de grupo mostram a skin **atual** de quem mandou (cubo, cores e glow), lida do perfil. | Servidor: o feed traz glow e ícones |
+| Apagar as mensagens | O Chat Geral foi esvaziado (0 mensagens). | Produção |
+| GeoBR só no GDPS | No servidor Oficial todos os hooks do GeoBR ficam desligados, menos o botão de servidor (e a busca de atualização): o GD fica vanilla. | Compila; falta testar no jogo |
+| Um precisa do outro | O GeoBR exige o GeoBR GDPS como dependência no Geode. O GeoBR GDPS só ativa o GDPS se o GeoBR estiver instalado e ativo. | Pacote: dependência declarada |
+| Painel antigo (More Games) no painel do dono | O atalho dos 8 toques em "More Games" saiu. Agora é Painel ADM → Resumo → **Painel GeoBR** (só o Owner), sem senha: a conta GDPS do Owner abre a sessão de 20 minutos. | Produção (transação desfeita): senha errada recusada, Owner abre |
+| Só o primeiro Main Level | Fica só "Loucura Brasileira". "Teoria Tropical" e "Bloqueio Total" foram despublicados, não apagados. | Produção |
+| IDs separados nos packs | Map Pack: um campo para cada um dos 3 levels. Gauntlet: tipo + 5 campos. Formulários grandes ficam em 2 colunas. | Compila |
 
 ## 1.12.0 (15/11)
 

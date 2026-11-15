@@ -1,5 +1,6 @@
 #pragma once
 #include "../gdps/GdpsService.hpp"
+#include "../services/CloudService.hpp"
 #include <Geode/ui/Popup.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 #include <Geode/ui/TextInput.hpp>
@@ -148,6 +149,7 @@ private:
     enum Tab { Stats, Players, Levels, Comments, Events, Demons, Songs, Roles, Board, Audit, Packs, TabCount };
     matjson::Value m_me;
     gdps::Request m_fetch, m_action;
+    CloudRequest m_bridge;  // GeoBR (Supabase) admin session for the Owner
     Tab m_tab = Stats;
     int m_sub = 0;                       // sub-view inside a tab (e.g. reports / suggestions)
     std::string m_query;
@@ -171,6 +173,7 @@ private:
     void onTab(cocos2d::CCObject*);
     void onTool(cocos2d::CCObject*);
     void onRow(int row, int button);
+    void openGeoBRPanel();
     void editPack(matjson::Value pack);
     void editGauntlet(matjson::Value gauntlet);
 };

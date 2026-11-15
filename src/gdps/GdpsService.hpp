@@ -21,6 +21,9 @@ void switchServer(bool gdps);
 std::string baseUrl();
 int accountID();
 std::string username();
+
+/** Priority of the main menu's server-button hook: the only hook kept on the official server. */
+inline constexpr int32_t ServerMenuHookPriority = -24681;
 std::string gjp2();
 /** On the GDPS and logged in on GD (the account in the GDPS save is a GDPS account). */
 bool loggedIn();

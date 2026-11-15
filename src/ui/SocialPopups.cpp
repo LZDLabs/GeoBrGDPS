@@ -135,7 +135,7 @@ void ChatPopup::render() {
         auto bubble = ui::makePanel({390, height}, mine ? ccColor3B{49, 42, 85} : ccColor3B{25, 43, 65}, 255);
         bubble->setPosition({mine ? 229.f : 195.f, height / 2});
         node->addChild(bubble);
-        auto avatar = visual::avatar(row, 22);
+        auto avatar = visual::playerIcon(row, IconType::Cube, 22);
         avatar->setPosition({20, height - 18});
         bubble->addChild(avatar);
         label(bubble, mine ? std::string("Voce") : jsonutil::stringOr(row, "sender_name", "Jogador"), {38, height - 12}, .28f, 250, {255, 222, 134}, true);

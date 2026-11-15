@@ -49,6 +49,9 @@ void place(CCNode* root, std::initializer_list<char const*> menus, CCMenuItemSpr
 } // namespace
 
 class $modify(GeoBRServerMenu, MenuLayer) {
+    // Marked so main.cpp keeps it when GeoBR is off on the official server.
+    static void onModify(auto& self) { (void)self.setHookPriority("MenuLayer::init", gdps::ServerMenuHookPriority); }
+
     bool init() {
         if (!MenuLayer::init()) return false;
         update::checkOnce();
