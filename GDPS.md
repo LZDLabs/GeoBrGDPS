@@ -1,15 +1,27 @@
-# GDPS GeoBR v2 — 1.10.0-beta.2 (Android arm64)
+# GDPS GeoBR — 1.11.0 (Android arm64)
 
 São **dois arquivos**, instalados pelo Geode:
 
 | Arquivo | O que é | SHA-256 |
 |---|---|---|
-| `dist/geobr.geobrmod.geode` | GeoBR Mod 1.10.0-beta.2 | `12354dc8df646605ba5ecef2b7c66acc063dad60871c5d38b67e39af08be5965` |
-| `dist/geobr.gdps.geode` | **GeoBR GDPS** 1.0.1 (troca de servidor e saves separados) | `95e02a8a4506d6f9d31f610f745d761c872cfeadb8c07a44e7d0a24f1cd1a380` |
+| `dist/geobr.geobrmod.geode` | GeoBR Mod 1.11.0 | `c5b860008d7ec6d2a3564fb87b09553ac2f4ea34ddec6277c4663e8ecb889e27` |
+| `dist/geobr.gdps.geode` | **GeoBR GDPS** 1.0.2 (troca de servidor e saves separados) | `0cecbba90d2bd6558da4ad0d1c8c92cec017ff78c613a270b7596f0bb2dff61e` |
 
 > **Status do servidor (13/11):** a v2 está no ar. O banco foi atualizado, a função `gdps` está na versão 2 e a conta **Luiz** (ID 1, Owner) foi criada. O teste ao vivo contra o Supabase real passou. Os dados do teste de 08/11 foram **escondidos, não apagados**: as contas `GeoBRTeste` estão banidas e fora do ranking, e o level de teste está marcado como apagado. Assim a migração não precisou de nenhuma confirmação sua.
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
+
+## 1.11.0 (15/11)
+
+| Pedido | Feito | Testado |
+|---|---|---|
+| Rate igual ao da RobTop | O botao de estrelas do GD (moderador). Tocar no rosto troca Rated > Featured > Epic > Legendary > Mythic. O servidor entende `feature` 0-4. O popup "Mod" ficou so com Tirar rate, Moedas, Daily/Weekly/Evento, Bloquear e Apagar. | Servidor local: 0-4 viram key 42 = 0,1,2,3 |
+| Apagar Demon List | Removida do menu GDPS, do painel ADM, do popup Mod e do comando `!demonlist`. Os dados no banco ficam guardados. | `static_validation.py` |
+| Collab nao entrava com o codigo | Nenhum pedido de "entrar" chegou ao servidor: o botao saia em silencio enquanto outro pedido estava pendente. Agora usa um pedido proprio, mostra "Aguarde", libera depois de 20 s e aceita codigo com espaco ou traco. | Build; falta testar no jogo |
+| Ja estava logado na conta | Os logs mostram o mod 1.9.0-beta.9 (RC9) em uso, sem separacao. A separacao agora troca o arquivo do save (`GManager::setup`) e funciona no PC e no celular. A pasta continua `geobr-gdps/`. | Build Android; falta testar no jogo |
+| Musicas | Envio real em producao: criar, enviar o MP3, conferir, publicar, `getGJSongInfo` e arquivo publico 200. A musica de teste foi removida. | Ao vivo |
+| Atualizacao automatica | No menu principal o mod le `updates/latest.json` de LZDLabs/GeoBrGDPS, pergunta, baixa, confere o SHA-256 e troca o pacote. O jogo reinicia. **O repositorio precisa ser publico** (privado responde 404). | SHA-256: 4 vetores FIPS |
+| PC | **Bloqueado:** compilar para Windows exige baixar o MSVC/Windows SDK aceitando a licenca da Microsoft, e isso precisa da sua autorizacao. | - |
 
 ## O que mudou (e por quê)
 
