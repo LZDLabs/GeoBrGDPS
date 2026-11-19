@@ -2,7 +2,7 @@
 #include "CloudService.hpp"
 #include <Geode/Geode.hpp>
 namespace geobr {
-inline constexpr char ClientVersion[]="1.15.0";
+inline constexpr char ClientVersion[]="1.15.1";
 class AccessService final:public cocos2d::CCNode {
  CloudRequest m_request;bool m_started=false,m_pending=false;matjson::Value m_status=matjson::Value::object();
  void poll(float);

@@ -95,3 +95,8 @@ begin
   execute format('grant execute on function public.geobr_%s(%s) to authenticated', f.name, f.sig);
  end loop;
 end $$;
+
+-- 1.15.1: level copy to the GDPS fixed.
+insert into geobr_private.releases(version, enabled, message)
+values ('1.15.1', true, 'GeoBR 1.15.1: levar level pro GDPS corrigido')
+on conflict (version) do nothing;

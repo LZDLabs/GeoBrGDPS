@@ -11,6 +11,11 @@ São **dois arquivos**, instalados pelo Geode:
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
 
+## 1.15.1 (19/11)
+
+- "Levar pro GDPS" e "Meus levels" (painel de Main Levels) davam "No file type set": o mod agora exporta o `.gmd` pela função pronta do gmd-api, já no formato GMD.
+- O botão do GD normal virou um botão redondo "GDPS" na coluna da direita da página do level (com node-ids entra no layout da coluna), sem ficar por cima dos botões do GD e de outros mods.
+
 ## 1.15.0 (19/11)
 
 - **Collab:** o host e os ADMs sincronizam todas as configurações da fase ao vivo: música, offset/fade, modo de jogo inicial, velocidade, mini, dual, espelhado, 2 jogadores, plataforma, fundo, chão, fundo do meio e fonte. Para os outros, a janela de configurações fica cinza (só o OK funciona) e qualquer mudança volta para a da sala. Botão "Membros" no editor do collab (o host dá/tira ADM ali). Mudanças em start pos e outros objetos entram assim que ninguém está com eles selecionados (não esperam mais janelas abertas). Botão "Convidar" na sala: a pessoa (usuário do GDPS) recebe uma notificação com o código.

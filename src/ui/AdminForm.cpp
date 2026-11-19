@@ -134,8 +134,11 @@ void AdminForm::onMine(CCObject*){
     WeakRef<AdminForm> weak=this;
     if(auto chooser=LocalLevelChooser::create([weak](GJGameLevel* level){
         auto self=weak.lock();if(!self||!level)return;
-        auto bytes=gmd::ExportGmdFile::from(level).intoBytes();
-        if(bytes.isErr()){self->status(fmt::format("Falha ao exportar: {}",bytes.unwrapErr()));return;}
+        auto temp=Mod::get()->getSaveDir()/"main-level-export.gmd";
+        auto exported=gmd::exportLevelAsGmd(level,temp,gmd::GmdFileType::Gmd);
+        if(exported.isErr()){self->status(fmt::format("Falha ao exportar: {}",exported.unwrapErr()));return;}
+        auto bytes=file::readBinary(temp);std::error_code removeError;std::filesystem::remove(temp,removeError);
+        if(bytes.isErr()){self->status("Falha ao ler o level exportado.");return;}
         if(bytes.unwrap().size()>GeoBRConfig::MaxGmdBytes){self->status("O level passa de 12 MB.");return;}
         self->m_busy=true;self->uploadGmd(std::move(bytes).unwrap(),".gmd",std::string(level->m_levelName));
     }))chooser->show();

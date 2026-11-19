@@ -10,6 +10,7 @@
 #include <Geode/binding/LocalLevelManager.hpp>
 #include <Geode/modify/EditLevelLayer.hpp>
 #include <Geode/modify/MenuLayer.hpp>
+#include <Geode/ui/BasedButtonSprite.hpp>
 #include <Geode/ui/Notification.hpp>
 #include <hjfod.gmd-api/include/GMD.hpp>
 
@@ -64,14 +65,23 @@ class $modify(GeoBRSendToGdps, EditLevelLayer) {
     bool init(GJGameLevel* level) {
         if (!EditLevelLayer::init(level)) return false;
         if (geobr::gdps::enabled() || !level) return true;
-        auto win = CCDirector::sharedDirector()->getWinSize();
-        auto sprite = ButtonSprite::create("Levar pro GDPS", 90, true, "bigFont.fnt", "GJ_button_02.png", 26, .5f);
-        sprite->setScale(.6f);
+        // Round "GDPS" button in the right column of the level page (with
+        // node-ids it joins that column's layout); never over other buttons.
+        auto top = CCLabelBMFont::create("GDPS", "bigFont.fnt");
+        top->setScale(.42f);
+        auto sprite = CircleButtonSprite::create(top, CircleBaseColor::Blue, CircleBaseSize::Medium);
         auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(GeoBRSendToGdps::onSendToGdps));
         button->setID("geobr-send-to-gdps");
+        if (auto column = getChildByIDRecursive("level-actions-menu")) {
+            column->addChild(button);
+            column->updateLayout();
+            return true;
+        }
+        auto win = CCDirector::sharedDirector()->getWinSize();
+        sprite->setScale(.8f);
         auto menu = CCMenu::create();
         menu->setID("geobr-send-to-gdps-menu");
-        menu->setPosition({win.width - 62.f, 22.f});
+        menu->setPosition({win.width - 112.f, win.height / 2.f - 30.f});
         menu->addChild(button);
         addChild(menu, 10);
         return true;
@@ -79,16 +89,11 @@ class $modify(GeoBRSendToGdps, EditLevelLayer) {
 
     void onSendToGdps(CCObject*) {
         if (!m_level) return;
-        auto bytes = gmd::ExportGmdFile::from(m_level).intoBytes();
-        if (bytes.isErr()) {
-            FLAlertLayer::create("GDPS GeoBR", fmt::format("Nao deu para copiar o level: {}", bytes.unwrapErr()), "OK")->show();
-            return;
-        }
         std::error_code error;
         std::filesystem::create_directories(transferDir(), error);
         auto path = transferDir() / fmt::format("{}-{}.gmd", std::time(nullptr), safeName(m_level->m_levelName));
-        if (auto written = file::writeBinary(path, bytes.unwrap()); written.isErr()) {
-            FLAlertLayer::create("GDPS GeoBR", fmt::format("Nao deu para salvar a copia: {}", written.unwrapErr()), "OK")->show();
+        if (auto written = gmd::exportLevelAsGmd(m_level, path, gmd::GmdFileType::Gmd); written.isErr()) {
+            FLAlertLayer::create("GDPS GeoBR", fmt::format("Nao deu para copiar o level: {}", written.unwrapErr()), "OK")->show();
             return;
         }
         FLAlertLayer::create("GDPS GeoBR",
