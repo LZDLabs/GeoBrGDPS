@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include "../gdps/GdpsService.hpp"
 #include "../services/CloudService.hpp"
 #include <Geode/ui/Popup.hpp>
@@ -139,6 +140,9 @@ private:
     void onMine(cocos2d::CCObject*);
     void onUpload(cocos2d::CCObject*);
     void pickAndSend(std::string name, std::string artist);
+    void fromFolder(std::string name, std::string artist);
+    void sendFile(std::filesystem::path const& path, std::string name, std::string artist);
+    static std::filesystem::path musicFolder();
     void useSong(int row);
 };
 

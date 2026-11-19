@@ -12,6 +12,9 @@ namespace geobr::collab {
 /** Starts the live session for this editor (child node of the EditorUI). */
 void startLive(EditorUI* ui, std::string const& room);
 
+/** Sends the trace of a live session that ended in a crash (once, at start). */
+void uploadPendingTrace();
+
 /** Whether this account may save / publish the room's level (owner or ADM). */
 bool canSaveRoom(std::string const& room);
 

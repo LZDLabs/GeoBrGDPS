@@ -82,15 +82,36 @@ void CollabService::refreshPublished(float) {
 bool CollabService::hasRooms() const { return Mod::get()->getSavedValue<int>("collab-room-count", 0) > 0; }
 void CollabService::setRoomCount(int count) { Mod::get()->setSavedValue("collab-room-count", std::max(0, count)); }
 
+namespace {
+// GD's strings can carry NUL bytes (seen at the end of compressed levels);
+// the server rejects them in JSON ("unsupported Unicode escape sequence").
+std::string withoutNul(std::string text) {
+    std::erase(text, '\0');
+    return text;
+}
+}
+
 std::string CollabService::decompress(std::string const& data) {
-    if (data.empty()) return {};
+    auto clean = withoutNul(data);
+    if (clean.empty()) return {};
     // Plain level strings start with the header ("kS38," / "kA...").
-    if (data.starts_with("kS") || data.starts_with("kA")) return data;
-    return std::string(ZipUtils::decompressString(gd::string(data), false, 0));
+    if (clean.starts_with("kS") || clean.starts_with("kA")) return clean;
+    return withoutNul(std::string(ZipUtils::decompressString(gd::string(clean), false, 0)));
+}
+
+std::string CollabService::packForGame(std::string const& level) {
+    return withoutNul(std::string(ZipUtils::compressString(gd::string(withoutNul(level)), false, 0)));
 }
 
 std::string CollabService::compress(std::string const& level) {
-    return std::string(ZipUtils::compressString(gd::string(level), false, 0));
+    auto plain = withoutNul(level);
+    if (plain.empty()) return {};
+    auto packed = packForGame(plain);
+    // Only send the compressed form when it unpacks to the same level;
+    // otherwise the plain level (every version reads both).
+    if (!packed.empty() && decompress(packed) == plain) return packed;
+    log::warn("Collab: compressao do level falhou; enviando sem compressao ({} bytes)", plain.size());
+    return plain;
 }
 
 std::string CollabService::roomOf(GJGameLevel* level) {
@@ -157,7 +178,7 @@ void CollabService::openRoom(matjson::Value room, OpenDone done) {
         }
         // The editor rebuilds the level from the room's live objects; the saved
         // level is only the starting point (and the copy kept on the device).
-        level->m_levelString = gd::string(compress(theirs));
+        level->m_levelString = gd::string(packForGame(theirs));
         saveBase(id, theirs, revision);
         saveLocalLevels();
         done(level, {});

@@ -454,11 +454,12 @@ void MusicLibraryPopup::onUpload(CCObject*) {
     if (m_busy) return;
     if (!gdps::loggedIn()) { status("Entre na sua conta GeoBR para enviar musicas."); return; }
     auto prompt = GdpsPrompt::create("Enviar MP3", "MP3 de ate 15 MB. Musicas novas passam pela moderacao.",
-        {{"Nome", "", CommonFilter::Any, 60}, {"Artista", "", CommonFilter::Any, 40}}, {"Escolher arquivo", "Cancelar"},
+        {{"Nome", "", CommonFilter::Any, 60}, {"Artista", "", CommonFilter::Any, 40}}, {"Escolher arquivo", "Da pasta", "Cancelar"},
         [this](int button, auto const& v) {
-            if (button != 0) return;
+            if (button != 0 && button != 1) return;
             if (v[0].empty() || v[1].empty()) { status("Informe nome e artista."); return; }
-            pickAndSend(v[0], v[1]);
+            if (button == 0) pickAndSend(v[0], v[1]);
+            else fromFolder(v[0], v[1]);
         });
     if (prompt) prompt->show();
 }
@@ -469,8 +470,58 @@ void MusicLibraryPopup::pickAndSend(std::string name, std::string artist) {
     file::FilePickOptions options;
     options.filters = {{"MP3", {"*.mp3"}}};
     m_picker.spawn("GeoBR - escolher MP3", file::pick(file::PickMode::OpenFile, options), [this, name, artist](file::PickResult result) {
-        if (result.isErr() || !result.unwrap()) { m_busy = false; status(result.isErr() ? "Nao foi possivel abrir o seletor." : "Envio cancelado."); return; }
-        auto path = *result.unwrap();
+        if (result.isErr()) {
+            m_busy = false;
+            log::warn("Seletor de arquivo: {}", result.unwrapErr());
+            status(fmt::format("Seletor nao abriu ({}). Use \"Da pasta\".", result.unwrapErr()));
+            return;
+        }
+        if (!result.unwrap()) { m_busy = false; status("Envio cancelado."); return; }
+        sendFile(*result.unwrap(), name, artist);
+    });
+}
+
+std::filesystem::path MusicLibraryPopup::musicFolder() { return Mod::get()->getConfigDir() / "musicas"; }
+
+// Without the system file picker (some phones / launchers): the newest MP3 in
+// the mod's "musicas" folder (on Android it is inside Android/media, reachable
+// with any file manager).
+void MusicLibraryPopup::fromFolder(std::string name, std::string artist) {
+    auto folder = musicFolder();
+    std::error_code error;
+    std::filesystem::create_directories(folder, error);
+    std::filesystem::path newest;
+    std::filesystem::file_time_type newestTime{};
+    for (auto const& entry : std::filesystem::directory_iterator(folder, error)) {
+        std::error_code e;
+        if (!entry.is_regular_file(e)) continue;
+        auto ext = entry.path().extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (ext != ".mp3") continue;
+        auto time = entry.last_write_time(e);
+        if (newest.empty() || time > newestTime) { newest = entry.path(); newestTime = time; }
+    }
+    auto where = utils::string::pathToString(folder);
+    if (newest.empty()) {
+        utils::clipboard::write(where);
+        FLAlertLayer::create(nullptr, "Pasta de musicas",
+            fmt::format("Coloque o MP3 nesta pasta (caminho copiado) e toque em <cg>Da pasta</c> de novo:\n\n<cy>{}</c>", where), "OK", nullptr, 400.f)->show();
+        status("Nenhum MP3 na pasta de musicas.");
+        return;
+    }
+    auto file = utils::string::pathToString(newest.filename());
+    WeakRef<MusicLibraryPopup> weak = this;
+    createQuickPopup("Enviar MP3", fmt::format("Enviar <cy>{}</c> como <cg>{}</c> - {}?", file, name, artist), "Cancelar", "Enviar",
+        [weak, newest, name, artist](auto, bool send) {
+            auto self = weak.lock();
+            if (!self || !send) return;
+            self->m_busy = true;
+            self->sendFile(newest, name, artist);
+        });
+}
+
+void MusicLibraryPopup::sendFile(std::filesystem::path const& path, std::string name, std::string artist) {
+    {
         std::error_code error;
         auto size = std::filesystem::file_size(path, error);
         if (error || size < 1024 || size > 15u * 1024 * 1024) { m_busy = false; status("O MP3 precisa ter entre 1 KB e 15 MB."); return; }
@@ -501,7 +552,7 @@ void MusicLibraryPopup::pickAndSend(std::string name, std::string artist) {
                 });
             });
         });
-    });
+    }
 }
 
 } // namespace geobr

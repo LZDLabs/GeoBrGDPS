@@ -32,6 +32,8 @@ public:
     static GJGameLevel* localLevelFor(std::string const& room);
     static std::string decompress(std::string const& data);
     static std::string compress(std::string const& level);
+    /** GD-compressed level for GJGameLevel::m_levelString (no NUL bytes). */
+    static std::string packForGame(std::string const& level);
 
     struct Base { std::string level; int64_t revision = 0; bool exists = false; };
     static Base loadBase(std::string const& room);

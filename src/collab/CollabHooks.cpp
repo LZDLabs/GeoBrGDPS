@@ -19,6 +19,7 @@
 #include <Geode/modify/LevelBrowserLayer.hpp>
 #include <Geode/modify/LevelCell.hpp>
 #include <Geode/modify/LevelInfoLayer.hpp>
+#include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/UploadPopup.hpp>
 #include <Geode/ui/BasedButtonSprite.hpp>
 #include <Geode/ui/Notification.hpp>
@@ -127,6 +128,15 @@ class $modify(GeoBRCollabEditorUI, EditorUI) {
         if (room.empty()) return;
         std::string title = m_editorLayer->m_level ? std::string(m_editorLayer->m_level->m_levelName) : std::string("Collab");
         if (auto popup = geobr::ChatPopup::create(geobr::ChatKind::Collab, room, title)) popup->show();
+    }
+};
+
+// After a crash in the live collab editor, its trace goes to the server once.
+class $modify(GeoBRCollabReportMenu, MenuLayer) {
+    bool init() {
+        if (!MenuLayer::init()) return false;
+        geobr::collab::uploadPendingTrace();
+        return true;
     }
 };
 

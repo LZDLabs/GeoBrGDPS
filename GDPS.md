@@ -11,6 +11,43 @@ São **dois arquivos**, instalados pelo Geode:
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
 
+## 1.14.6 (16/11)
+
+- Enviar música no celular: além de "Escolher arquivo" (seletor do sistema, que não abre em alguns celulares/launchers), o envio tem o botão "Da pasta": usa o MP3 mais recente da pasta `geode/config/geobr.geobrmod/musicas` (no Android: `Android/media/com.geode.launcher/game/geode/config/geobr.geobrmod/musicas`, acessível por qualquer gerenciador de arquivos). Se a pasta estiver vazia, o mod mostra o caminho e copia para a área de transferência.
+- Se o seletor do sistema falhar, a mensagem mostra o erro exato.
+
+## 1.14.5 (15/11)
+
+- Crashlog do celular (ainda na 1.14.3): o crash era um "double free" dentro do gancho `removeSpecial` do BetterEdit (com Clean StartPos e Tinker no caminho), chamado pela remoção direta do collab (`removeObject` sem desfazer, logo ao abrir o editor). A 1.14.4 já apaga pelo caminho do jogador (com desfazer, objeto segurado até o fim); a 1.14.5 também só carrega a sala quando o editor terminou de abrir (transição acabou) e passou ~2 s, para os outros mods prepararem o editor antes.
+
+## 1.14.4 (15/11)
+
+- Crash ao entrar na sala corrigido (achado pelos relatórios automáticos, Android e PC): o crash acontecia ao remover, com `LevelEditorLayer::removeObject`, um objeto do level local fora da tela (start pos, portal). Agora o collab apaga como o jogador (seleciona e usa Delete do GD), mantendo a seleção de quem está editando; vale para a entrada na sala e para as mudanças ao vivo.
+- Na entrada, objetos iguais com diferença só de casas decimais (ex.: rotação -23 e -23.02) contam como iguais e não são trocados.
+
+## 1.14.3 (15/11)
+
+- Ao abrir uma sala, objetos que já estão iguais no seu editor só recebem o id da sala (antes todos eram apagados e criados de novo); só o que é diferente é trocado.
+- Relatório automático de crash do collab: cada passo do editor ao vivo vai para `collab-trace.txt` (pasta de saves do mod). Se o jogo fechar no meio, na próxima abertura o mod envia esse registro e o fim do log anterior do Geode (sem tokens/senhas) para o servidor, uma vez. Tabela `geobr_private.client_reports` (só o servidor lê). Migração `20261115160000_geobr_client_reports.sql`.
+
+## 1.14.2 (15/11)
+
+- Collab ao vivo mais seguro (o host fechava ao entrar com gente na sala): as mudanças dos outros só são aplicadas no início de um quadro (como um toque), nunca no meio das atualizações do editor; no máximo 400 por vez; esperam enquanto você arrasta, seleciona por área, move a câmera ou toca a música do editor.
+- A música recebida não chama mais a rotina interna de "configurações atualizadas" do GD (só muda os campos da música); o botão de desfazer não é mais atualizado à força.
+- Os nomes dos jogadores e o status ficam dentro de um único nó do collab na interface.
+
+## 1.14.1 (15/11)
+
+- Salvar/criar sala collab: corrigido o erro "unsupported Unicode escape sequence". O level comprimido pelo GD às vezes saía com um byte nulo, que o servidor recusa. Agora os bytes nulos são removidos, a compressão é conferida antes do envio e, se falhar, o level vai sem compressão (todas as versões leem os dois formatos).
+- Registro (log do Geode) das etapas do collab ao vivo, para achar a causa se o jogo fechar.
+
+## 1.14.0 (15/11, correção do collab)
+
+- Editor collab sem crash: as mudanças dos outros não são aplicadas durante o playtest, nem em objetos que você está selecionando/editando, nem com uma janela aberta (ficam na fila e entram depois). O histórico de desfazer é limpo quando a sala troca um objeto. Os nomes dos jogadores ficam numa camada da interface (antes ficavam dentro da camada de objetos do level).
+- Música no collab: quando o host (ou um ADM da sala) escolhe a música, offset ou fade nas configurações do level, a mudança vai para todos ao vivo. O servidor só aceita isso do host/ADMs e não envia para quem está na 1.12/1.13.
+- O status de ADM da sala atualiza durante a edição (não precisa sair e entrar).
+- Servidor: migração `20261115150000_geobr_collab_settings.sql` (só substitui funções; nenhum dado apagado).
+
 ## 1.13.0 (15/11, versão final)
 
 | Pedido | Feito | Testado |

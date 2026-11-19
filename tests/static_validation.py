@@ -4,7 +4,7 @@ import json,struct,plistlib,re
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 meta=json.loads((root/'mod.json').read_text())
-assert meta['id']=='geobr.geobrmod' and meta['version']=='1.13.0'
+assert meta['id']=='geobr.geobrmod' and meta['version']=='1.14.6'
 assert meta['gd']['android']=='2.2081' and meta['geode']=='5.9.0'
 names=set()
 for rel in meta['resources']['files']:
@@ -40,7 +40,7 @@ for unit in ['ArrowPlayer','ArrowPortal','ArrowLevel','ArrowSkins','ArrowPopup',
 code='\n'.join(p.read_text() for p in (root/'src').rglob('*') if p.suffix in ['.cpp','.hpp'])
 assert not re.search(r'\{\"p_password\",\s*\"',code), 'Admin RPC must use user input, not a literal password'
 assert 'service_role' not in code.replace('Nunca use a service_role',''), 'no service_role usage in the client'
-assert 'ClientVersion[]="1.13.0"' in code
+assert 'ClientVersion[]="1.14.6"' in code
 # GDPS: the client only redirects GD's own calls, never carries server secrets,
 # and the setting can turn the GDPS off (back to RobTop's servers).
 # GDPS v2: the server choice, the separate save and the redirect live in the
@@ -98,4 +98,4 @@ assert len(skins)==16 and [int(s[0]) for s in skins]==list(range(1,17)),'16 Arro
 assert sum(1 for s in skins if s[1]=='Crate')==6 and sorted(int(s[2]) for s in skins if s[1]=='Crate')==[1,2,3,4,5,6],'one exclusive per crate rarity'
 mig=(root/'supabase/migrations/20261105120000_geobr_rc7_arrow_items.sql').read_text()
 for s_ in skins[4:]: assert f"'arrow-{s_[0]}'" in mig,f'server item for skin {s_[0]}'
-print(f'PASS: manifest 1.13.0, companion geobr.gdps (early-load, separate save folder, redirect, server setting), GDPS hooks only add geobr-* buttons, no server key in client, GDPS migrations v1+v2, mod icon, God Editor icon, 2 original campaign levels in Storage (RC8 migration), RC9 collab/groups/icons migration, collab hooks only add geobr-* menus, 16 Arrow skins mirrored on the server, {len(meta["resources"]["files"])} resources (unique flattened names), 10 theme banners, 16 Arrow skins x 4 layers, portal art, {len(sources)} compilation units, no client admin password or service_role')
+print(f'PASS: manifest 1.14.6, companion geobr.gdps (early-load, separate save folder, redirect, server setting), GDPS hooks only add geobr-* buttons, no server key in client, GDPS migrations v1+v2, mod icon, God Editor icon, 2 original campaign levels in Storage (RC8 migration), RC9 collab/groups/icons migration, collab hooks only add geobr-* menus, 16 Arrow skins mirrored on the server, {len(meta["resources"]["files"])} resources (unique flattened names), 10 theme banners, 16 Arrow skins x 4 layers, portal art, {len(sources)} compilation units, no client admin password or service_role')

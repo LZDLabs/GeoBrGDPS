@@ -1,19 +1,19 @@
 {
   "format": 1,
-  "notes": "Versao final: GeoBR so no GDPS, skin no chat, Painel GeoBR no painel do dono, IDs separados nos packs.",
+  "notes": "1.14.6: editor collab sem crash ao entrar, musica do host para todos, enviar MP3 pela pasta no celular.",
   "packages": [
     {
       "id": "geobr.geobrmod",
       "name": "GeoBR",
-      "version": "1.13.0",
+      "version": "1.14.6",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "27bec838e57a2fdf0bb5cecf4051faffd7960092930e9c376e2f3a16823941dd"
+          "sha256": "1cb5a72fd94b0c9cbaabab333a976cc2c103bb8d0f602f5323cf5b813710d0d4"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "27bec838e57a2fdf0bb5cecf4051faffd7960092930e9c376e2f3a16823941dd"
+          "sha256": "1cb5a72fd94b0c9cbaabab333a976cc2c103bb8d0f602f5323cf5b813710d0d4"
         }
       }
     },
