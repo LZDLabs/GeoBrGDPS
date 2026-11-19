@@ -38,6 +38,21 @@ async::TaskHolder<web::WebResponse> s_manifest;
 async::TaskHolder<web::WebResponse> s_download;
 bool s_checked = false;
 
+// Other packages of the same mod in the mods folder (e.g. "geobr.geobrmod (1).geode"
+// from a manual copy): Geode loads only one of them, maybe the old one.
+void removeDuplicates(std::string const& id, std::filesystem::path const& keep) {
+    std::error_code error;
+    for (auto const& entry : std::filesystem::directory_iterator(dirs::getModsDir(), error)) {
+        std::error_code e;
+        if (!entry.is_regular_file(e) || entry.path().extension() != ".geode") continue;
+        if (std::filesystem::equivalent(entry.path(), keep, e)) continue;
+        auto metadata = ModMetadata::createFromGeodeFile(entry.path());
+        if (metadata.getID() != id) continue;
+        std::filesystem::remove(entry.path(), e);
+        log::warn("Update: removed duplicate package {} ({})", entry.path().filename().string(), e ? e.message() : "ok");
+    }
+}
+
 // Android (Geode launcher, "patchless"): the game loads each mod's binary from
 // the launcher's own folder, not from the .geode. Geode's own installer also
 // puts the new binary in unzipped/binaries, which is taken over on the next
@@ -114,7 +129,13 @@ void install(std::shared_ptr<std::vector<Package>> list, size_t index, int insta
             finish(installed, fmt::format("{}: arquivo diferente do publicado (SHA-256)", pkg.name));
             return;
         }
+        // Replace the package Geode actually loaded (its file name may differ).
         auto target = dirs::getModsDir() / (pkg.id + ".geode");
+        if (auto mod = Loader::get()->getInstalledMod(pkg.id)) {
+            auto loaded = mod->getPackagePath();
+            std::error_code e;
+            if (!loaded.empty() && loaded.parent_path() == dirs::getModsDir() && std::filesystem::exists(loaded, e)) target = loaded;
+        }
         auto temp = dirs::getModsDir() / (pkg.id + ".geode.download");
         if (auto written = file::writeBinary(temp, data); !written) {
             finish(installed, fmt::format("{}: nao foi possivel gravar ({})", pkg.name, written.unwrapErr()));
@@ -127,6 +148,7 @@ void install(std::shared_ptr<std::vector<Package>> list, size_t index, int insta
             finish(installed, fmt::format("{}: nao foi possivel substituir o pacote", pkg.name));
             return;
         }
+        removeDuplicates(pkg.id, target);
         if (auto staged = stageBinary(target); !staged) {
             finish(installed, fmt::format("{}: pacote salvo, mas o binario nao foi preparado ({})", pkg.name, staged.unwrapErr()));
             return;
@@ -145,6 +167,7 @@ void repairStaleBinary(char const* compiledVersion) {
     static bool done = false;
     if (done) return;
     done = true;
+    removeDuplicates(Mod::get()->getID(), Mod::get()->getPackagePath());
     auto packaged = Mod::get()->getVersion().toVString();
     auto running = std::string("v") + compiledVersion;
     if (packaged == running || packaged == compiledVersion) return;

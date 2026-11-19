@@ -105,3 +105,8 @@ on conflict (version) do nothing;
 insert into geobr_private.releases(version, enabled, message)
 values ('1.15.2', true, 'GeoBR 1.15.2: atualizacao automatica corrigida no Android')
 on conflict (version) do nothing;
+
+-- 1.15.3: update replaces the loaded package and removes duplicate copies.
+insert into geobr_private.releases(version, enabled, message)
+values ('1.15.3', true, 'GeoBR 1.15.3: atualizacao substitui o pacote carregado e remove copias duplicadas')
+on conflict (version) do nothing;

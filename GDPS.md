@@ -11,6 +11,10 @@ São **dois arquivos**, instalados pelo Geode:
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
 
+## 1.15.3 (19/11)
+
+- Atualização automática: grava por cima do pacote que o Geode realmente carregou (o nome do arquivo pode ser outro, ex. `geobr.geobrmod (1).geode` de uma cópia manual) e apaga outras cópias do mesmo mod na pasta de mods. Com duas cópias, o Geode carregava só uma (podia ser a antiga) e a atualização "não pegava". Ao abrir o jogo, cópias duplicadas também são removidas.
+
 ## 1.15.2 (19/11)
 
 - Atualização automática no Android: o launcher do Geode carrega o binário (.so) do mod de uma pasta própria, não de dentro do .geode. O atualizador só trocava o .geode, então o jogo continuava com o binário antigo. Agora ele faz igual ao instalador do próprio Geode: também coloca o binário novo em `unzipped/binaries`, que é usado no próximo início.
