@@ -8,6 +8,8 @@
 #include "../ui/SocialPopups.hpp"
 
 #include <Geode/Geode.hpp>
+#include <Geode/binding/ButtonSprite.hpp>
+#include <Geode/binding/CCTextInputNode.hpp>
 #include <Geode/binding/EditorUI.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
 #include <Geode/binding/GJSearchObject.hpp>
@@ -19,6 +21,7 @@
 #include <Geode/modify/LevelBrowserLayer.hpp>
 #include <Geode/modify/LevelCell.hpp>
 #include <Geode/modify/LevelInfoLayer.hpp>
+#include <Geode/modify/LevelSettingsLayer.hpp>
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/UploadPopup.hpp>
 #include <Geode/ui/BasedButtonSprite.hpp>
@@ -117,10 +120,23 @@ class $modify(GeoBRCollabEditorUI, EditorUI) {
         auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(GeoBRCollabEditorUI::onCollabChat));
         button->setID("geobr-collab-chat");
         menu->addChild(button);
+        // Members (the host gives / takes ADM there).
+        auto membersSprite = ButtonSprite::create("Membros", 70, true, "bigFont.fnt", "GJ_button_04.png", 24, .5f);
+        membersSprite->setScale(.75f);
+        auto members = CCMenuItemSpriteExtra::create(membersSprite, this, menu_selector(GeoBRCollabEditorUI::onCollabMembers));
+        members->setID("geobr-collab-members");
+        menu->addChild(members);
+        menu->setLayout(RowLayout::create()->setGap(6.f));
         addChild(menu, 100);
         // Live editing: changes and everyone's position, about once per second.
         geobr::collab::startLive(this, room);
         return true;
+    }
+
+    void onCollabMembers(CCObject*) {
+        auto room = roomOfEditor(m_editorLayer);
+        if (room.empty()) return;
+        if (auto popup = geobr::MembersPopup::create(geobr::ChatKind::Collab, room, "Membros do collab")) popup->show();
     }
 
     void onCollabChat(CCObject*) {
@@ -128,6 +144,48 @@ class $modify(GeoBRCollabEditorUI, EditorUI) {
         if (room.empty()) return;
         std::string title = m_editorLayer->m_level ? std::string(m_editorLayer->m_level->m_levelName) : std::string("Collab");
         if (auto popup = geobr::ChatPopup::create(geobr::ChatKind::Collab, room, title)) popup->show();
+    }
+};
+
+// Level settings of a collab level: only the host and the ADMs change them
+// (they go to everyone live). For the others everything is grey and disabled
+// except OK; any change would be put back to the room's settings anyway.
+class $modify(GeoBRCollabLevelSettings, LevelSettingsLayer) {
+    bool init(LevelSettingsObject* settings, LevelEditorLayer* editor) {
+        if (!LevelSettingsLayer::init(settings, editor)) return false;
+        auto room = editor ? roomOfEditor(editor) : std::string();
+        if (room.empty() || geobr::collab::canSaveRoom(room)) return true;
+        lockDown(m_mainLayer);
+        auto size = m_mainLayer->getContentSize();
+        auto note = CCLabelBMFont::create("Somente o host e os ADMs alteram as configuracoes", "bigFont.fnt");
+        note->setScale(.32f);
+        note->setColor({255, 120, 120});
+        note->setPosition({size.width / 2.f, size.height - 12.f});
+        note->setID("geobr-collab-settings-locked");
+        m_mainLayer->addChild(note, 100);
+        return true;
+    }
+
+    // The OK button (ButtonSprite "OK"; "ok-button" with node-ids) stays usable.
+    static bool isOk(CCMenuItem* item) {
+        if (item->getID() == "ok-button") return true;
+        auto sprite = typeinfo_cast<CCMenuItemSpriteExtra*>(item);
+        auto button = sprite ? typeinfo_cast<ButtonSprite*>(sprite->getNormalImage()) : nullptr;
+        return button && button->m_label && std::string(button->m_label->getString()) == "OK";
+    }
+
+    void lockDown(CCNode* node) {
+        if (!node) return;
+        for (auto child : CCArrayExt<CCNode*>(node->getChildren())) {
+            if (auto item = typeinfo_cast<CCMenuItem*>(child)) {
+                if (isOk(item)) continue;
+                item->setEnabled(false);
+                if (auto rgba = typeinfo_cast<CCRGBAProtocol*>(item)) rgba->setColor(ccColor3B{110, 110, 110});
+                continue;
+            }
+            if (auto input = typeinfo_cast<CCTextInputNode*>(child)) { input->setTouchEnabled(false); continue; }
+            lockDown(child);
+        }
     }
 };
 

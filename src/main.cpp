@@ -1,3 +1,4 @@
+#include "services/PresenceService.hpp"
 #include "ui/GeoBRHubLayer.hpp"
 #include "services/AccessService.hpp"
 #include "gdps/GdpsService.hpp"
@@ -22,7 +23,7 @@ $on_mod(Loaded){
 }
 class $modify(GeoBRMenuLayer,MenuLayer){
  bool init(){
-  if(!MenuLayer::init())return false;geobr::AccessService::get()->start();geobr::GeoPassService::get()->start();geobr::collab::CollabService::get()->start();static bool ranked=false;if(!ranked){ranked=true;geobr::RankService::get()->start();}
+  if(!MenuLayer::init())return false;geobr::AccessService::get()->start();geobr::GeoPassService::get()->start();geobr::presence::start();geobr::collab::CollabService::get()->start();static bool ranked=false;if(!ranked){ranked=true;geobr::RankService::get()->start();}
   auto sprite=ButtonSprite::create("GeoBR",82,true,"bigFont.fnt","GJ_button_01.png",31,.48f);auto b=CCMenuItemSpriteExtra::create(sprite,this,menu_selector(GeoBRMenuLayer::onOpenGeoBR));b->setID("geobr-button");
   if(auto menu=typeinfo_cast<CCMenu*>(getChildByID("bottom-menu"))){menu->addChild(b);menu->updateLayout();}
   else {auto fallback=CCMenu::create();auto win=CCDirector::sharedDirector()->getWinSize();fallback->setPosition({win.width/2,31});fallback->addChild(b);addChild(fallback,20);}

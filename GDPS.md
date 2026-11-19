@@ -11,6 +11,16 @@ São **dois arquivos**, instalados pelo Geode:
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
 
+## 1.15.0 (19/11)
+
+- **Collab:** o host e os ADMs sincronizam todas as configurações da fase ao vivo: música, offset/fade, modo de jogo inicial, velocidade, mini, dual, espelhado, 2 jogadores, plataforma, fundo, chão, fundo do meio e fonte. Para os outros, a janela de configurações fica cinza (só o OK funciona) e qualquer mudança volta para a da sala. Botão "Membros" no editor do collab (o host dá/tira ADM ali). Mudanças em start pos e outros objetos entram assim que ninguém está com eles selecionados (não esperam mais janelas abertas). Botão "Convidar" na sala: a pessoa (usuário do GDPS) recebe uma notificação com o código.
+- **Status online:** bolinha ao lado do nome no perfil — verde (online, até 5 min), cinza (inativo, até 3 dias), vermelha (fora há mais tempo) — e "visto há X". Configuração do mod "Quem vê quando estou online": Todos / Amigos / Ninguém. O mod avisa o servidor a cada 2 min.
+- **Missões novas (sociais):** seguir todos os Elder Moderators, colocar 50 objetos num collab, comentar em 2 fases, fazer um amigo, curtir 3 fases, mandar uma mensagem, votar na dificuldade de 2 fases. Contam sozinhas pelo servidor (gatilhos nas tabelas do GDPS); a de seguir é conferida pelo mod (o GD guarda os "seguir"). O painel de quests aceita esses tipos.
+- **Notificações:** mensagem recebida, pedido de amizade e convite de collab aparecem no jogo.
+- **Main Levels (painel):** além de "Arquivo .gmd", agora "Meus levels" (escolhe um level seu; o mod gera o .gmd) e "Da pasta" (`geode/config/geobr.geobrmod/levels`). O envio para o Supabase continua automático.
+- **GD normal → GDPS:** no GD normal (servidores oficiais), o seu level tem o botão "Levar pro GDPS"; a cópia aparece em Criar quando você abre o jogo no GDPS GeoBR.
+- Servidor: migrações `20261119120000_geobr_social_presence.sql` e `20261119130000_geobr_social_triggers.sql` (sem apagar dados).
+
 ## 1.14.6 (16/11)
 
 - Enviar música no celular: além de "Escolher arquivo" (seletor do sistema, que não abre em alguns celulares/launchers), o envio tem o botão "Da pasta": usa o MP3 mais recente da pasta `geode/config/geobr.geobrmod/musicas` (no Android: `Android/media/com.geode.launcher/game/geode/config/geobr.geobrmod/musicas`, acessível por qualquer gerenciador de arquivos). Se a pasta estiver vazia, o mod mostra o caminho e copia para a área de transferência.

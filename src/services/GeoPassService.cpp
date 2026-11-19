@@ -1,3 +1,4 @@
+#include <Geode/binding/GameLevelManager.hpp>
 #include "GeoPassService.hpp"
 #include "MainLevelProgress.hpp"
 #include "PlayerService.hpp"
@@ -23,7 +24,18 @@ void GeoPassService::start(){
  auto p=Mod::get()->getSavedValue<matjson::Value>("activity-pending-v2",matjson::Value::array());if(p.isArray())m_queue=p.asArray().unwrap();
  CCDirector::sharedDirector()->getScheduler()->scheduleSelector(schedule_selector(GeoPassService::tick),this,10.f,false);CCDirector::sharedDirector()->getScheduler()->scheduleSelector(schedule_selector(GeoPassService::drain),this,1.f,false);tick(0);
 }
-void GeoPassService::tick(float){sendNext();if(!PlayLayer::get()){++m_ticks;if(m_ticks%3==1||!m_queue.empty())refresh();if(m_ticks%6==1)notices();
+// Mission "follow the Elder Moderators": GD keeps the follows, so the mod
+// checks them and the server completes the mission when all are followed.
+static void checkFollowElders(matjson::Value const& state){
+ auto q=state.get("quest");if(!q||jsonutil::stringOr(q.unwrap(),"kind")!="follow_elders")return;
+ static CloudRequest elders,report;
+ elders.rpc("geobr_elders",matjson::Value::object(),[](auto r){
+  if(!r.success||!r.value.isArray())return;auto followed=matjson::Value::array();auto glm=GameLevelManager::sharedState();
+  for(auto const& e:r.value.asArray().unwrap()){auto id=static_cast<int>(jsonutil::integerOr(e,"account_id"));if(id>0&&glm&&glm->isFollowingUser(id))followed.push(id);}
+  report.rpc("geobr_quest_follow_elders",matjson::makeObject({{"p_followed",followed}}),[](auto f){if(f.success&&f.value.contains("state"))GeoPassService::get()->ingest(f.value["state"]);});
+ });
+}
+void GeoPassService::tick(float){sendNext();if(!PlayLayer::get()){++m_ticks;if(m_ticks%3==1||!m_queue.empty())refresh();if(m_ticks%3==2)checkFollowElders(m_state);if(m_ticks%6==1)notices();
  auto cursor=Mod::get()->getSavedValue<int64_t>("social-cursor",0);
  m_social.call("GET",fmt::format("/rest/v1/geobr_social_notifications?select=id,kind,body&order=id.asc&id=gt.{}&limit=5",cursor),{},[this,cursor](auto r){
  if(PlayLayer::get()||!r.success||!r.value.isArray())return;auto latest=cursor;

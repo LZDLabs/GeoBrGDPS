@@ -43,6 +43,7 @@ private:
     void onOpen(cocos2d::CCObject*);
     void onChat(cocos2d::CCObject*);
     void onMembers(cocos2d::CCObject*);
+    void onInvite(cocos2d::CCObject*);
     void onLeave(cocos2d::CCObject*);
 };
 

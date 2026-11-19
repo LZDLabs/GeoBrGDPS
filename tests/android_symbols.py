@@ -20,6 +20,8 @@ needed=['PlayerObject::pushButton(','PlayerObject::releaseButton(','PlayerObject
  'GManager::save(','GameObject::createWithKey(','GameObject::getSaveString(','ObjectToolbox::intKeyToFrame(','ObjectToolbox::sharedState(',
  # RC8: God Editor end-animation guards
  'PlayLayer::playEndAnimationToPos(','PlayLayer::playPlatformerEndAnimationToPos(',
+ # 1.15.0: collab level settings, online status, follow mission, level transfer
+ 'LevelSettingsLayer::init(','LevelEditorLayer::levelSettingsUpdated(','GameLevelManager::isFollowingUser(','EditLevelLayer::init(','cocos2d::CCDrawNode::drawDot(',
  # 1.14.4: collab deletes like the player (select + delete)
  'EditorUI::selectObjects(','EditorUI::onDeleteSelected(',
  # 1.12.0: live collab editor, RobTop-style rate popup, publish lock

@@ -1,4 +1,5 @@
 #include "CollabPopup.hpp"
+#include "GdpsPopups.hpp"
 #include "GeoBRVisuals.hpp"
 #include "SocialPopups.hpp"
 #include "UIHelpers.hpp"
@@ -186,17 +187,17 @@ void CollabPopup::renderDetail(CCMenu* menu) {
     label(m_content, fmt::format("{} pessoa(s)  |  revisao {}  |  voce e {}{}", jsonutil::integerOr(room, "members"), jsonutil::integerOr(room, "revision"),
         role == "owner" ? "dono" : role == "viewer" ? "so leitura" : "editor", posted > 0 ? fmt::format("  |  ID no GD: {}", posted) : std::string()),
         {Size.width / 2, 172}, .45f, 440, {170, 205, 240}, false, "chatFont.fnt");
-    char const* labels[] = {"Abrir level", "Chat", "Membros", "Sair da sala", "Voltar"};
-    char const* colors[] = {"GJ_button_01.png", "GJ_button_02.png", "GJ_button_02.png", "GJ_button_06.png", "GJ_button_04.png"};
-    SEL_MenuHandler handlers[] = {menu_selector(CollabPopup::onOpen), menu_selector(CollabPopup::onChat), menu_selector(CollabPopup::onMembers),
-        menu_selector(CollabPopup::onLeave), menu_selector(CollabPopup::onBack)};
-    CCPoint positions[] = {{Size.width / 2, 128}, {140, 84}, {340, 84}, {140, 44}, {340, 44}};
-    for (int i = 0; i < 5; ++i) {
-        auto b = ui::makeTextButton(labels[i], i == 0 ? 200 : 150, colors[i], this, handlers[i], .32f, 30);
+    char const* labels[] = {"Abrir level", "Chat", "Convidar", "Membros", "Sair da sala", "Voltar"};
+    char const* colors[] = {"GJ_button_01.png", "GJ_button_02.png", "GJ_button_01.png", "GJ_button_02.png", "GJ_button_06.png", "GJ_button_04.png"};
+    SEL_MenuHandler handlers[] = {menu_selector(CollabPopup::onOpen), menu_selector(CollabPopup::onChat), menu_selector(CollabPopup::onInvite),
+        menu_selector(CollabPopup::onMembers), menu_selector(CollabPopup::onLeave), menu_selector(CollabPopup::onBack)};
+    CCPoint positions[] = {{Size.width / 2, 128}, {Size.width / 2 - 145, 84}, {Size.width / 2, 84}, {Size.width / 2 + 145, 84}, {140, 44}, {340, 44}};
+    for (int i = 0; i < 6; ++i) {
+        auto b = ui::makeTextButton(labels[i], i == 0 ? 200 : 130, colors[i], this, handlers[i], .32f, 30);
         b->setPosition(positions[i]);
         menu->addChild(b);
     }
-    setStatus(m_status, "No editor: Sync envia/recebe as mudancas; salvar tambem envia.");
+    setStatus(m_status, "No editor tudo e ao vivo. O host e os ADMs salvam e mudam as configuracoes.");
 }
 
 void CollabPopup::renderCreate(CCMenu* menu) {
@@ -323,6 +324,25 @@ void CollabPopup::onOpen(CCObject*) {
 void CollabPopup::onChat(CCObject*) {
     if (m_selected.isNull()) return;
     if (auto p = ChatPopup::create(ChatKind::Collab, jsonutil::stringOr(m_selected, "id"), jsonutil::stringOr(m_selected, "title", "Chat do collab"))) p->show();
+}
+
+// The host / ADMs call someone by GDPS username: they get a notification with the code.
+void CollabPopup::onInvite(CCObject*) {
+    if (m_selected.isNull()) return;
+    auto room = jsonutil::stringOr(m_selected, "id");
+    WeakRef<CollabPopup> weak = this;
+    auto prompt = GdpsPrompt::create("Convidar", "Nome de usuario no GDPS. A pessoa recebe uma notificacao com o codigo da sala.",
+        {{"Usuario", "", CommonFilter::Any, 20}}, {"Convidar", "Cancelar"}, [weak, room](int button, auto const& v) {
+            auto self = weak.lock();
+            if (!self || button != 0 || v.empty() || v[0].empty()) return;
+            setStatus(self->m_status, "Enviando convite...");
+            self->m_action.rpc("geobr_collab_invite", matjson::makeObject({{"p_room", room}, {"p_username", v[0]}}), [weak](auto r) {
+                auto self = weak.lock();
+                if (!self) return;
+                setStatus(self->m_status, r.success ? fmt::format("Convite enviado para {}!", jsonutil::stringOr(r.value, "username")) : r.error);
+            });
+        });
+    if (prompt) prompt->show();
 }
 
 void CollabPopup::onMembers(CCObject*) {

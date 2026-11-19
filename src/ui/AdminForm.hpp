@@ -1,4 +1,6 @@
 #pragma once
+#include <filesystem>
+#include <vector>
 #include "AdminPanel.hpp"
 #include <Geode/utils/file.hpp>
 #include <Geode/binding/CCMenuItemToggler.hpp>
@@ -12,7 +14,8 @@ class AdminForm final:public geode::Popup {
     bool init(AdminEntity,matjson::Value);std::vector<Field> fields()const;
     void status(std::string const&);void setValue(std::string const&,std::string const&);
     std::string value(std::string const&)const;
-    void onSave(cocos2d::CCObject*);void onFile(cocos2d::CCObject*);void onChoice(cocos2d::CCObject*);
+    void onSave(cocos2d::CCObject*);void onFile(cocos2d::CCObject*);void onMine(cocos2d::CCObject*);void onFolder(cocos2d::CCObject*);
+    void useFile(std::filesystem::path const& path);void uploadGmd(std::vector<uint8_t> bytes,std::string extension,std::string levelName);void onChoice(cocos2d::CCObject*);
 public:static AdminForm* create(AdminEntity,matjson::Value row={});
 };
 }

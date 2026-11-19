@@ -1,3 +1,4 @@
+#include <Geode/binding/LocalLevelManager.hpp>
 #include "AdminForm.hpp"
 #include "UIHelpers.hpp"
 #include "GeoBRVisuals.hpp"
@@ -24,7 +25,7 @@ std::vector<AdminForm::Field> AdminForm::fields()const{
         case AdminEntity::Announcements:return {{"title","Titulo"},{"message","Mensagem (ate 200)"},{"expires_at","Expira em (UTC)","date",dateAfter(1)},{"published","Publicado","bool","true"}};
         case AdminEntity::Seasons:return {{"name","Nome"},{"starts_at","Inicio (UTC)","date",dateAfter(30)},{"ends_at","Fim (UTC)","date",dateAfter(60)},{"xp_per_tier","XP por etapa","int","100"},{"published","Publicado","bool","false"}};
         case AdminEntity::Rewards:return {{"season_id","ID da temporada","int","1"},{"tier","Etapa (1-100)","int","1"},{"kind","Premio","select","tokens",{"tokens","orbs","stars","skin","crate","quest_skip","theme","arrow"}},{"amount","Quantidade (skin=1)","int","25"},{"icon_type","Tipo da skin","select","cube",{"cube","ship","ball","ufo","wave","robot","spider","swing","jetpack"}},{"icon_id","ID da skin","int","1"},{"crate_rarity","Caixa: 1 Comum a 6 Mitica","int","1"},{"item_id","Item (tema/arrow), ex.: arrow-9","text",""}};
-        case AdminEntity::Quests:return {{"season_id","ID da temporada","int","1"},{"sequence_order","Posicao na sequencia","int","65"},{"title","Titulo"},{"kind","Objetivo","select","complete",{"complete","death","reach"}},{"goal","Levels / tentativas","int","1"},{"difficulty","Dificuldade","select","any",{"any","auto","easy","normal","hard","harder","insane","demon"}},{"scope","Origem dos levels","select","any",{"any","main","online","official"}},{"mode","Modo de jogo","select","normal",{"any","normal","practice"}},{"platformer","Formato","select","any",{"any","classic","platformer"}},{"min_percent","Porcentagem minima","int","0"},{"max_percent","Porcentagem maxima","int","100"},{"xp","XP ao concluir","int","100"},{"tokens","Tokens ao concluir","int","8"},{"published","Publicado","bool","true"}};
+        case AdminEntity::Quests:return {{"season_id","ID da temporada","int","1"},{"sequence_order","Posicao na sequencia","int","65"},{"title","Titulo"},{"kind","Objetivo","select","complete",{"complete","death","reach","follow_elders","collab_objects","comment","friend","like","gd_message","rate"}},{"goal","Levels / tentativas","int","1"},{"difficulty","Dificuldade","select","any",{"any","auto","easy","normal","hard","harder","insane","demon"}},{"scope","Origem dos levels","select","any",{"any","main","online","official"}},{"mode","Modo de jogo","select","normal",{"any","normal","practice"}},{"platformer","Formato","select","any",{"any","classic","platformer"}},{"min_percent","Porcentagem minima","int","0"},{"max_percent","Porcentagem maxima","int","100"},{"xp","XP ao concluir","int","100"},{"tokens","Tokens ao concluir","int","8"},{"published","Publicado","bool","true"}};
         case AdminEntity::Shop:return {{"id","ID (slug unico)","text",""},{"name","Nome"},{"kind","Categoria","select","title",{"title","theme","tier_skip","quest_skip","arrow"}},{"price","Preco em Tokens","int","40"},{"style","Estilo de tema","select","",{"","fire","ice","forest","cosmos","neon","gold","aurora","eclipse","royal","astral"}},{"description","Descricao"},{"sort_order","Ordem na loja","int","50"},{"published","Publicado","bool","true"}};
         case AdminEntity::MainLevels:return {{"campaign_order","Ordem na campanha","int","1"},{"name","Nome"},{"creator","Criador","text","Equipe GeoBR"},{"description","Descricao"},{"difficulty","Dificuldade","select","Normal",{"Auto","Easy","Normal","Hard","Harder","Insane","Easy Demon","Medium Demon","Hard Demon","Insane Demon","Extreme Demon"}},{"stars","Estrelas (0-10)","int","3"},{"coins","Moedas (0-3)","int","3"},{"song","Nome da musica"},{"platformer","Plataforma","bool","false"},{"gmd_path","Arquivo no servidor"},{"file_version","Versao do arquivo","int","1"},{"published","Publicado","bool","false"}};
     }return {};
@@ -50,7 +51,12 @@ bool AdminForm::init(AdminEntity entity,matjson::Value row){
     }
     scroll->m_contentLayer->updateLayout();scroll->scrollToTop();
     auto menu=CCMenu::create();menu->setPosition({0,0});auto save=ui::makeTextButton("Salvar",122,"GJ_button_01.png",this,menu_selector(AdminForm::onSave),.38f,28);save->setPosition({entity==AdminEntity::MainLevels?360.f:250.f,21});menu->addChild(save);
-    if(entity==AdminEntity::MainLevels){auto file=ui::makeTextButton("Escolher .gmd",182,"GJ_button_04.png",this,menu_selector(AdminForm::onFile),.35f,28);file->setPosition({128,21});menu->addChild(file);}
+    if(entity==AdminEntity::MainLevels){
+        // Three ways to bring the level: a .gmd file, one of my levels (exported by the mod), or the mod's "levels" folder (phones).
+        char const* names[]={"Arquivo .gmd","Meus levels","Da pasta"};SEL_MenuHandler handlers[]={menu_selector(AdminForm::onFile),menu_selector(AdminForm::onMine),menu_selector(AdminForm::onFolder)};float xs[]={78,196,306};
+        for(int i=0;i<3;++i){auto b=ui::makeTextButton(names[i],i==0?118:104,"GJ_button_04.png",this,handlers[i],.32f,28);b->setPosition({xs[i],21});menu->addChild(b);}
+        save->setPosition({425,21});
+    }
     m_mainLayer->addChild(menu,5);m_status=ui::makeLabel("","chatFont.fnt",.43f,{178,238,255});m_status->setPosition({250,43});m_mainLayer->addChild(m_status);return true;
 }
 void AdminForm::status(std::string const& text){m_status->setString(text.c_str());m_status->limitLabelWidth(461,.43f,.23f);}
@@ -88,21 +94,84 @@ void AdminForm::onSave(CCObject*){
 void AdminForm::onFile(CCObject*){
     if(m_busy)return;m_busy=true;status("Escolha o arquivo do GDShare...");
     m_picker.spawn("GeoBR - escolher Main Level",file::pick(file::PickMode::OpenFile,{{},{{"GDShare",{"*.gmd","*.gmd2","*.lvl"}}}}),[this](auto result){
-        if(result.isErr()||!result.unwrap()){m_busy=false;status(result.isErr()?"Nao foi possivel abrir o seletor.":"Selecao cancelada.");return;}
-        auto path=*result.unwrap();std::error_code error;auto size=std::filesystem::file_size(path,error);
+        if(result.isErr()){m_busy=false;status(fmt::format("Seletor nao abriu ({}). Use \"Meus levels\" ou \"Da pasta\".",result.unwrapErr()));return;}
+        if(!result.unwrap()){m_busy=false;status("Selecao cancelada.");return;}
+        useFile(*result.unwrap());
+    });
+}
+namespace {
+// One of my local levels, 6 per page.
+class LocalLevelChooser final:public Popup{
+    std::function<void(GJGameLevel*)> m_done;std::vector<Ref<GJGameLevel>> m_levels;int m_page=0;CCMenu* m_list=nullptr;
+public:
+    static LocalLevelChooser* create(std::function<void(GJGameLevel*)> done){auto p=new LocalLevelChooser;if(p->init(std::move(done))){p->autorelease();return p;}delete p;return nullptr;}
+    bool init(std::function<void(GJGameLevel*)> done){
+        if(!Popup::init(340,260))return false;m_done=std::move(done);setTitle("Escolha um level seu");
+        if(auto levels=LocalLevelManager::sharedState()->m_localLevels)for(auto level:CCArrayExt<GJGameLevel*>(levels))if(level&&!std::string(level->m_levelString).empty())m_levels.emplace_back(level);
+        auto nav=CCMenu::create();nav->setPosition({0,0});m_mainLayer->addChild(nav,3);
+        auto prev=CCMenuItemSpriteExtra::create(CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png"),this,menu_selector(LocalLevelChooser::onPrev));prev->setScale(.6f);prev->setPosition({22,130});nav->addChild(prev);
+        auto nextSprite=CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png");nextSprite->setFlipX(true);
+        auto next=CCMenuItemSpriteExtra::create(nextSprite,this,menu_selector(LocalLevelChooser::onNext));next->setScale(.6f);next->setPosition({318,130});nav->addChild(next);
+        render();return true;
+    }
+    void render(){
+        if(m_list)m_list->removeFromParent();m_list=CCMenu::create();m_list->setPosition({0,0});m_mainLayer->addChild(m_list,2);
+        int pages=std::max<int>(1,(static_cast<int>(m_levels.size())+5)/6);m_page=std::clamp(m_page,0,pages-1);
+        if(m_levels.empty()){auto l=CCLabelBMFont::create("Voce nao tem levels criados.","chatFont.fnt");l->setScale(.6f);l->setPosition({170,130});m_list->addChild(l);return;}
+        for(int i=0;i<6;++i){size_t index=m_page*6+i;if(index>=m_levels.size())break;
+            auto name=std::string(m_levels[index]->m_levelName);if(name.empty())name="Sem nome";
+            auto b=ui::makeTextButton(name.substr(0,24),230,"GJ_button_04.png",this,menu_selector(LocalLevelChooser::onPick),.32f,26);b->setTag(static_cast<int>(index));b->setPosition({170,200-i*30.f});m_list->addChild(b);}
+        auto page=CCLabelBMFont::create(fmt::format("{}/{}",m_page+1,pages).c_str(),"goldFont.fnt");page->setScale(.4f);page->setPosition({170,18});m_list->addChild(page);
+    }
+    void onPrev(CCObject*){--m_page;render();}
+    void onNext(CCObject*){++m_page;render();}
+    void onPick(CCObject* s){auto index=static_cast<size_t>(s->getTag());if(index>=m_levels.size())return;Ref<GJGameLevel> level=m_levels[index];auto done=m_done;onClose(nullptr);if(done)done(level);}
+};
+}
+// One of my levels, exported to .gmd by the mod (no file picker needed).
+void AdminForm::onMine(CCObject*){
+    if(m_busy)return;
+    WeakRef<AdminForm> weak=this;
+    if(auto chooser=LocalLevelChooser::create([weak](GJGameLevel* level){
+        auto self=weak.lock();if(!self||!level)return;
+        auto bytes=gmd::ExportGmdFile::from(level).intoBytes();
+        if(bytes.isErr()){self->status(fmt::format("Falha ao exportar: {}",bytes.unwrapErr()));return;}
+        if(bytes.unwrap().size()>GeoBRConfig::MaxGmdBytes){self->status("O level passa de 12 MB.");return;}
+        self->m_busy=true;self->uploadGmd(std::move(bytes).unwrap(),".gmd",std::string(level->m_levelName));
+    }))chooser->show();
+}
+// Newest .gmd / .gmd2 / .lvl in the mod's "levels" folder (phones where the picker does not open).
+void AdminForm::onFolder(CCObject*){
+    if(m_busy)return;
+    auto folder=Mod::get()->getConfigDir()/"levels";std::error_code error;std::filesystem::create_directories(folder,error);
+    std::filesystem::path newest;std::filesystem::file_time_type newestTime{};
+    for(auto const& entry:std::filesystem::directory_iterator(folder,error)){
+        std::error_code e;if(!entry.is_regular_file(e))continue;auto ext=entry.path().extension().string();
+        std::transform(ext.begin(),ext.end(),ext.begin(),[](unsigned char c){return static_cast<char>(std::tolower(c));});
+        if(ext!=".gmd"&&ext!=".gmd2"&&ext!=".lvl")continue;auto time=entry.last_write_time(e);if(newest.empty()||time>newestTime){newest=entry.path();newestTime=time;}
+    }
+    auto where=utils::string::pathToString(folder);
+    if(newest.empty()){utils::clipboard::write(where);FLAlertLayer::create(nullptr,"Pasta de levels",fmt::format("Coloque o .gmd nesta pasta (caminho copiado) e toque em <cg>Da pasta</c> de novo:\n\n<cy>{}</c>",where),"OK",nullptr,400.f)->show();status("Nenhum .gmd na pasta de levels.");return;}
+    m_busy=true;status("Lendo "+utils::string::pathToString(newest.filename())+"...");useFile(newest);
+}
+void AdminForm::useFile(std::filesystem::path const& path){
+    {
+        std::error_code error;auto size=std::filesystem::file_size(path,error);
         if(error||size==0||size>GeoBRConfig::MaxGmdBytes){m_busy=false;status("O arquivo deve ter dados e no maximo 12 MB.");return;}
         auto imported=gmd::importGmdAsLevel(path);
         if(imported.isErr()||!imported.unwrap()||imported.unwrap()->m_levelString.empty()){m_busy=false;status("Arquivo GDShare invalido ou level vazio.");return;}
         auto data=file::readBinary(path);if(data.isErr()){m_busy=false;status("Falha ao ler o arquivo.");return;}
         auto extension=path.extension().string();if(extension!=".gmd"&&extension!=".gmd2"&&extension!=".lvl"){m_busy=false;status("Use .gmd, .gmd2 ou .lvl.");return;}
-        auto name=fmt::format("main-levels/{}-{}{}",std::time(nullptr),std::random_device{}(),extension);
-        std::string levelName=imported.unwrap()->m_levelName;
-        status("Enviando arquivo...");
-        m_upload.call("POST","/storage/v1/object/geobr-main-levels/"+name,{},[this,name,levelName](auto upload){
-            m_busy=false;if(!upload.success){status(upload.error);return;}
-            setValue("gmd_path",name);if(value("name").empty())setValue("name",levelName);
-            setValue("file_version",std::to_string(m_id?jsonutil::integerOr(m_row,"file_version",1)+1:1));status("Arquivo enviado. Revise os campos e clique Salvar.");
-        },true,std::move(data).unwrap());
-    });
+        uploadGmd(std::move(data).unwrap(),extension,std::string(imported.unwrap()->m_levelName));
+    }
+}
+void AdminForm::uploadGmd(std::vector<uint8_t> bytes,std::string extension,std::string levelName){
+    auto name=fmt::format("main-levels/{}-{}{}",std::time(nullptr),std::random_device{}(),extension);
+    status("Enviando arquivo...");
+    m_upload.call("POST","/storage/v1/object/geobr-main-levels/"+name,{},[this,name,levelName](auto upload){
+        m_busy=false;if(!upload.success){status(upload.error);return;}
+        setValue("gmd_path",name);if(value("name").empty())setValue("name",levelName);
+        setValue("file_version",std::to_string(m_id?jsonutil::integerOr(m_row,"file_version",1)+1:1));status("Arquivo enviado. Revise os campos e clique Salvar.");
+    },true,std::move(bytes));
 }
 }

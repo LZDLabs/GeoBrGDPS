@@ -8,6 +8,7 @@
 #include <Geode/binding/GJGameLevel.hpp>
 #include <Geode/binding/GameObject.hpp>
 #include <Geode/binding/LevelEditorLayer.hpp>
+#include <Geode/binding/LevelSettingsLayer.hpp>
 #include <Geode/binding/LevelSettingsObject.hpp>
 
 #include <Geode/loader/Dirs.hpp>
@@ -151,17 +152,24 @@ std::string settingsOf(LevelEditorLayer* editor) {
     auto level = editor->m_level;
     auto settings = editor->m_levelSettings;
     if (!level || !settings) return {};
+    // Music plus the level settings (start game mode, speed, mini, dual,
+    // mirror, 2 players, platformer, background / ground / font).
     return matjson::makeObject({
         {"a", level->m_audioTrack}, {"s", level->m_songID}, {"o", settings->m_songOffset},
         {"fi", settings->m_fadeIn}, {"fo", settings->m_fadeOut},
+        {"gm", settings->m_startMode}, {"sp", static_cast<int>(settings->m_startSpeed)},
+        {"mi", settings->m_startMini}, {"du", settings->m_startDual}, {"mr", settings->m_mirrorMode},
+        {"rg", settings->m_rotateGameplay}, {"tp", settings->m_twoPlayerMode}, {"pf", settings->m_platformerMode},
+        {"bg", settings->m_backgroundIndex}, {"gr", settings->m_groundIndex}, {"ft", settings->m_fontIndex},
+        {"mg", settings->m_middleGroundIndex}, {"fl", settings->m_isFlipped}, {"rv", settings->m_reverseGameplay},
     }).dump(matjson::NO_INDENTATION);
 }
 
-// A popup (object settings, level settings, chat...) may hold pointers to objects.
-bool popupOpen() {
+// The level settings window is open here (its own copy of the values).
+bool settingsOpen() {
     auto scene = CCDirector::sharedDirector()->getRunningScene();
     if (!scene) return false;
-    for (auto child : CCArrayExt<CCNode*>(scene->getChildren())) if (typeinfo_cast<FLAlertLayer*>(child)) return true;
+    for (auto child : CCArrayExt<CCNode*>(scene->getChildren())) if (typeinfo_cast<LevelSettingsLayer*>(child)) return true;
     return false;
 }
 
@@ -191,6 +199,7 @@ private:
     // Remote changes waiting until it is safe to apply them (playtest, the
     // object selected / in a popup here): uid -> latest data (nullopt = deleted).
     std::unordered_map<std::string, std::optional<std::string>> m_deferred;
+    std::string m_roomSettings;  // the room's level settings as last received
     bool m_flushQueued = false;
     static constexpr size_t MaxAppliedPerFlush = 400;
     std::vector<Op> m_pending;
@@ -263,15 +272,57 @@ public:
         auto parsed = matjson::parse(data);
         if (!parsed) return;
         auto const& v = parsed.unwrap();
-        auto level = ed->m_level;
         auto settings = ed->m_levelSettings;
-        log::info("Collab ao vivo: musica da sala {}", data);
-        level->m_audioTrack = static_cast<int>(jsonutil::integerOr(v, "a", level->m_audioTrack));
-        level->m_songID = static_cast<int>(jsonutil::integerOr(v, "s", level->m_songID));
+        log::info("Collab ao vivo: configuracoes da sala {}", data);
+        m_roomSettings = data;
+        auto before = settingsOf(ed);
+        // The song lives in the level; the settings window edits the level its
+        // settings object points to, which can be another object: set both.
+        for (auto level : {ed->m_level, settings->m_level}) {
+            if (!level) continue;
+            level->m_audioTrack = static_cast<int>(jsonutil::integerOr(v, "a", level->m_audioTrack));
+            level->m_songID = static_cast<int>(jsonutil::integerOr(v, "s", level->m_songID));
+        }
+        auto num = [&](char const* key, int fallback) { return static_cast<int>(jsonutil::integerOr(v, key, fallback)); };
+        auto flag = [&](char const* key, bool fallback) { return jsonutil::boolOr(v, key, fallback); };
         settings->m_songOffset = static_cast<float>(v["o"].asDouble().unwrapOr(settings->m_songOffset));
-        settings->m_fadeIn = jsonutil::boolOr(v, "fi", settings->m_fadeIn);
-        settings->m_fadeOut = jsonutil::boolOr(v, "fo", settings->m_fadeOut);
-        m_known[SettingsUid] = settingsOf(ed);
+        settings->m_fadeIn = flag("fi", settings->m_fadeIn);
+        settings->m_fadeOut = flag("fo", settings->m_fadeOut);
+        settings->m_startMode = std::clamp(num("gm", settings->m_startMode), 0, 7);
+        settings->m_startSpeed = static_cast<Speed>(std::clamp(num("sp", static_cast<int>(settings->m_startSpeed)), 0, 4));
+        settings->m_startMini = flag("mi", settings->m_startMini);
+        settings->m_startDual = flag("du", settings->m_startDual);
+        settings->m_mirrorMode = flag("mr", settings->m_mirrorMode);
+        settings->m_rotateGameplay = flag("rg", settings->m_rotateGameplay);
+        settings->m_twoPlayerMode = flag("tp", settings->m_twoPlayerMode);
+        settings->m_platformerMode = flag("pf", settings->m_platformerMode);
+        settings->m_backgroundIndex = std::max(0, num("bg", settings->m_backgroundIndex));
+        settings->m_groundIndex = std::max(0, num("gr", settings->m_groundIndex));
+        settings->m_fontIndex = std::max(0, num("ft", settings->m_fontIndex));
+        settings->m_middleGroundIndex = std::max(0, num("mg", settings->m_middleGroundIndex));
+        settings->m_isFlipped = flag("fl", settings->m_isFlipped);
+        settings->m_reverseGameplay = flag("rv", settings->m_reverseGameplay);
+        auto after = settingsOf(ed);
+        m_known[SettingsUid] = after;
+        // Like closing the settings window: the editor redraws background,
+        // ground, font and mode. At the start of a frame, never in playtest.
+        if (after != before) {
+            WeakRef<LiveSession> weak = this;
+            Loader::get()->queueInMainThread([weak] {
+                auto self = weak.lock();
+                if (!self) return;
+                auto ed = self->editor();
+                if (ed && !self->playing() && !settingsOpen()) { trace("configuracoes aplicadas"); ed->levelSettingsUpdated(); }
+            });
+        }
+    }
+
+    // Someone who cannot change the room's settings changed them here: back to the room's.
+    void keepRoomSettings() {
+        auto ed = editor();
+        if (!ed || canSave() || m_roomSettings.empty() || settingsOpen()) return;
+        auto it = m_known.find(SettingsUid);
+        if (it != m_known.end() && settingsOf(ed) != it->second) applySettings(m_roomSettings);
     }
 
     // Object changes are made at the start of a frame (like a touch), never in
@@ -468,6 +519,7 @@ public:
         if (!ed) return;
         // Playtest moves objects around: no reading or replacing them until it stops.
         if (playing()) return;
+        keepRoomSettings();
         queueFlush();
         m_pending = localChanges();
         auto ops = matjson::Value::array();
@@ -526,7 +578,10 @@ public:
         if (m_ui->m_selectedObjects)
             for (auto object : CCArrayExt<GameObject*>(m_ui->m_selectedObjects)) if (object) busy.insert(object);
         // Touching / dragging / music preview: existing objects wait too.
-        bool popup = popupOpen() || m_ui->m_swipeActive || m_ui->m_isDraggingCamera || m_ui->m_isPlayingMusic;
+        // Selected objects (moved / edited / in an edit window) wait; so do all
+        // existing objects while the player drags a selection box or the camera.
+        bool popup = m_ui->m_swipeActive || m_ui->m_isDraggingCamera;
+        bool settingsBusy = settingsOpen();
         size_t waiting = m_deferred.size();
         std::vector<std::pair<std::string, std::optional<std::string>>> ready;
         std::vector<GameObject*> remove;
@@ -535,7 +590,7 @@ public:
             auto const& uid = it->first;
             auto const& data = it->second;
             if (special(uid)) {
-                if (uid == SettingsUid && data && !popup) { trace("musica " + *data); applySettings(*data); }
+                if (uid == SettingsUid && data && !settingsBusy) { trace("musica " + *data); applySettings(*data); }
                 else if (uid == SettingsUid && data) { ++it; continue; }
                 it = m_deferred.erase(it);
                 continue;

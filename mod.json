@@ -8,7 +8,7 @@
   },
   "id": "geobr.geobrmod",
   "name": "GeoBR Mod",
-  "version": "1.14.6",
+  "version": "1.15.0",
   "developer": "GeoBR",
   "description": "GeoBR: GDPS proprio (com o mod GeoBR GDPS), levels, caixas, passe, comunidade, TOP e o gamemode Arrow.",
   "dependencies": {
@@ -131,6 +131,13 @@
       "default": "sb_publishable_iXNlORpQZQZqTyxqoMXuew_9TE0ZTT1",
       "name": "Chave publica do Supabase",
       "description": "Chave publica do projeto GeoBR. Nunca use a service_role no jogo."
+    },
+    "online-status": {
+      "type": "string",
+      "name": "Quem ve quando estou online",
+      "description": "Bolinha no perfil (verde online, cinza inativo, vermelha fora ha muito tempo) e o 'visto por ultimo'.",
+      "default": "Todos",
+      "one-of": ["Todos", "Amigos", "Ninguem"]
     },
     "ui-density": {
       "type": "int",

@@ -4,6 +4,7 @@
 // They are appended to GD's own button menus through the node-ids layouts (so
 // other mods' buttons are arranged together, not overlapped) or, when a menu
 // has no layout, placed in a separate geobr-* menu. Native nodes are untouched.
+#include "../services/PresenceService.hpp"
 #include "GdpsService.hpp"
 #include "../services/UpdateService.hpp"
 #include "../ui/GdpsPopups.hpp"
@@ -93,6 +94,7 @@ class $modify(GeoBRGdpsLevelInfo, LevelInfoLayer) {
 class $modify(GeoBRGdpsProfile, ProfilePage) {
     void loadPageFromUserInfo(GJUserScore* score) {
         ProfilePage::loadPageFromUserInfo(score);
+        presence::decorate(this, score);
         if (!gdps::loggedIn() || !score || score->m_accountID <= 0 || score->m_accountID == gdps::accountID()) return;
         if (!gdps::can("admin.panel") || m_mainLayer->getChildByIDRecursive("geobr-gdps-user-mod")) return;
         auto button = smallButton("Mod", "GJ_button_06.png", this, menu_selector(GeoBRGdpsProfile::onGeoBRMod), "geobr-gdps-user-mod");

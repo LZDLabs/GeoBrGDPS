@@ -32,6 +32,8 @@ add_library(${PROJECT_NAME} SHARED
     src/services/RankService.cpp
     src/hooks/RankHook.cpp
     src/services/GeoPassService.cpp
+    src/services/PresenceService.cpp
+    src/hooks/LevelTransferHook.cpp
     src/ui/GeoPassPopup.cpp
     src/ui/GeoBRVisuals.cpp
     src/ui/TierShopPopup.cpp

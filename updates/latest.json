@@ -1,19 +1,19 @@
 {
   "format": 1,
-  "notes": "1.14.6: editor collab sem crash ao entrar, musica do host para todos, enviar MP3 pela pasta no celular.",
+  "notes": "1.15.0: collab com todas as configuracoes ao vivo, status online no perfil, missoes sociais, notificacoes, Main Level pelo mod e levar level do GD normal pro GDPS.",
   "packages": [
     {
       "id": "geobr.geobrmod",
       "name": "GeoBR",
-      "version": "1.14.6",
+      "version": "1.15.0",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "1cb5a72fd94b0c9cbaabab333a976cc2c103bb8d0f602f5323cf5b813710d0d4"
+          "sha256": "8c4877b3f64d76b28c192071ece259fbaf2e7893f814c0e6785c47df77ebefe8"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "1cb5a72fd94b0c9cbaabab333a976cc2c103bb8d0f602f5323cf5b813710d0d4"
+          "sha256": "8c4877b3f64d76b28c192071ece259fbaf2e7893f814c0e6785c47df77ebefe8"
         }
       }
     },
