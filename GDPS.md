@@ -11,6 +11,11 @@ São **dois arquivos**, instalados pelo Geode:
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
 
+## 1.15.2 (19/11)
+
+- Atualização automática no Android: o launcher do Geode carrega o binário (.so) do mod de uma pasta própria, não de dentro do .geode. O atualizador só trocava o .geode, então o jogo continuava com o binário antigo. Agora ele faz igual ao instalador do próprio Geode: também coloca o binário novo em `unzipped/binaries`, que é usado no próximo início.
+- Se o pacote instalado for mais novo que o binário rodando (atualização feita por uma versão antiga do atualizador), o mod prepara o binário sozinho e pede para fechar e abrir o jogo.
+
 ## 1.15.1 (19/11)
 
 - "Levar pro GDPS" e "Meus levels" (painel de Main Levels) davam "No file type set": o mod agora exporta o `.gmd` pela função pronta do gmd-api, já no formato GMD.

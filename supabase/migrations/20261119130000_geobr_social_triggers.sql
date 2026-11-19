@@ -100,3 +100,8 @@ end $$;
 insert into geobr_private.releases(version, enabled, message)
 values ('1.15.1', true, 'GeoBR 1.15.1: levar level pro GDPS corrigido')
 on conflict (version) do nothing;
+
+-- 1.15.2: auto-update on Android fixed.
+insert into geobr_private.releases(version, enabled, message)
+values ('1.15.2', true, 'GeoBR 1.15.2: atualizacao automatica corrigida no Android')
+on conflict (version) do nothing;

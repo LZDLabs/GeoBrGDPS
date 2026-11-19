@@ -4,6 +4,7 @@
 // They are appended to GD's own button menus through the node-ids layouts (so
 // other mods' buttons are arranged together, not overlapped) or, when a menu
 // has no layout, placed in a separate geobr-* menu. Native nodes are untouched.
+#include "../services/AccessService.hpp"
 #include "../services/PresenceService.hpp"
 #include "GdpsService.hpp"
 #include "../services/UpdateService.hpp"
@@ -55,6 +56,7 @@ class $modify(GeoBRServerMenu, MenuLayer) {
 
     bool init() {
         if (!MenuLayer::init()) return false;
+        update::repairStaleBinary(geobr::ClientVersion);
         update::checkOnce();
         if (!gdps::coreInstalled()) return true;
         bool on = gdps::enabled();

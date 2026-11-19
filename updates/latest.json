@@ -1,19 +1,19 @@
 {
   "format": 1,
-  "notes": "1.15.1: levar level do GD normal pro GDPS corrigido; collab com todas as configuracoes ao vivo, status online, missoes sociais, notificacoes.",
+  "notes": "1.15.2: atualizacao automatica corrigida no Android; collab com todas as configuracoes ao vivo, status online, missoes sociais, notificacoes, levar level do GD normal pro GDPS.",
   "packages": [
     {
       "id": "geobr.geobrmod",
       "name": "GeoBR",
-      "version": "1.15.1",
+      "version": "1.15.2",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "cdb99337394444c2ba8d79e26f708e3132eefb48e5ded649ed95e55a3f83f295"
+          "sha256": "2b3edca99ce750c73487a989782ba838b2183e96939edb6df7073eb0c3452d49"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "cdb99337394444c2ba8d79e26f708e3132eefb48e5ded649ed95e55a3f83f295"
+          "sha256": "2b3edca99ce750c73487a989782ba838b2183e96939edb6df7073eb0c3452d49"
         }
       }
     },

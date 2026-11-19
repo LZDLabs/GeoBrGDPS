@@ -38,6 +38,24 @@ async::TaskHolder<web::WebResponse> s_manifest;
 async::TaskHolder<web::WebResponse> s_download;
 bool s_checked = false;
 
+// Android (Geode launcher, "patchless"): the game loads each mod's binary from
+// the launcher's own folder, not from the .geode. Geode's own installer also
+// puts the new binary in unzipped/binaries, which is taken over on the next
+// start; this does exactly the same for a .geode the mod installed.
+geode::Result<> stageBinary(std::filesystem::path const& geodePath) {
+    if (!Loader::get()->isPatchless()) return geode::Ok();
+    auto metadata = ModMetadata::createFromGeodeFile(geodePath);
+    std::string binary(metadata.getBinaryName());
+    if (binary.empty()) return geode::Err("pacote sem binario");
+    GEODE_UNWRAP_INTO(auto unzip, file::Unzip::create(geodePath));
+    if (!unzip.hasEntry(binary)) return geode::Err("binario " + binary + " nao esta no pacote");
+    auto dir = dirs::getModRuntimeDir() / "binaries";
+    (void)file::createDirectoryAll(dir);
+    GEODE_UNWRAP(unzip.extractTo(binary, dir / binary));
+    log::info("Update: binary {} staged for the next start", binary);
+    return geode::Ok();
+}
+
 web::WebRequest request(int seconds) {
     web::WebRequest r;
     r.timeout(std::chrono::seconds{seconds}).certVerification(true).followRedirects(true);
@@ -109,12 +127,36 @@ void install(std::shared_ptr<std::vector<Package>> list, size_t index, int insta
             finish(installed, fmt::format("{}: nao foi possivel substituir o pacote", pkg.name));
             return;
         }
+        if (auto staged = stageBinary(target); !staged) {
+            finish(installed, fmt::format("{}: pacote salvo, mas o binario nao foi preparado ({})", pkg.name, staged.unwrapErr()));
+            return;
+        }
         log::info("Update: installed {} {} ({})", pkg.id, pkg.version, hash);
         install(list, index + 1, installed + 1);
     });
 }
 
 } // namespace
+
+void repairStaleBinary(char const* compiledVersion) {
+    // A .geode newer than the binary that is running (an update installed by an
+    // older updater on Android): stage this package's binary and ask for a
+    // full restart, so the new version really loads.
+    static bool done = false;
+    if (done) return;
+    done = true;
+    auto packaged = Mod::get()->getVersion().toVString();
+    auto running = std::string("v") + compiledVersion;
+    if (packaged == running || packaged == compiledVersion) return;
+    log::warn("Update: package is {} but the running binary is {}", packaged, compiledVersion);
+    if (auto staged = stageBinary(Mod::get()->getPackagePath()); !staged) {
+        log::error("Update: could not stage binary: {}", staged.unwrapErr());
+        return;
+    }
+    createQuickPopup("Atualizacao GeoBR",
+        fmt::format("A GeoBR {} foi baixada, mas ainda esta rodando a {}.\nFeche o jogo por completo e abra de novo para terminar.", packaged, running),
+        "Depois", "Reiniciar", [](auto, bool restart) { if (restart) game::restart(true); });
+}
 
 void checkOnce() {
     if (s_checked) return;

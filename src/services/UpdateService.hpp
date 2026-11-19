@@ -6,4 +6,6 @@
 // installed package. The new version loads after the game restarts.
 namespace geobr::update {
 void checkOnce();
+/** If the installed package is newer than the running binary, finish the update (Android). */
+void repairStaleBinary(char const* compiledVersion);
 }
