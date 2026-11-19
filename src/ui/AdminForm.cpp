@@ -1,5 +1,6 @@
 #include "AdminForm.hpp"
 #include "UIHelpers.hpp"
+#include "FileAccess.hpp"
 #include "GeoBRVisuals.hpp"
 #include "../services/RankService.hpp"
 #include "../config/GeoBRConfig.hpp"
@@ -86,9 +87,19 @@ void AdminForm::onSave(CCObject*){
     });
 }
 void AdminForm::onFile(CCObject*){
-    if(m_busy)return;m_busy=true;status("Escolha o arquivo do GDShare...");
+    if(m_busy)return;m_busy=true;status("Liberando acesso aos arquivos...");
+    WeakRef<AdminForm> weak=this;
+    ui::ensureFileAccess([weak](bool granted){
+        auto self=weak.lock();if(!self)return;
+        if(!granted){self->m_busy=false;self->status(ui::FileAccessDenied);return;}
+        self->openPicker();
+    });
+}
+void AdminForm::openPicker(){
+    status("Escolha o arquivo do GDShare...");
     m_picker.spawn("GeoBR - escolher Main Level",file::pick(file::PickMode::OpenFile,{{},{{"GDShare",{"*.gmd","*.gmd2","*.lvl"}}}}),[this](auto result){
-        if(result.isErr()||!result.unwrap()){m_busy=false;status(result.isErr()?"Nao foi possivel abrir o seletor.":"Selecao cancelada.");return;}
+        if(result.isErr()){m_busy=false;status(ui::pickErrorMessage(result.unwrapErr()));return;}
+        if(!result.unwrap()){m_busy=false;status("Selecao cancelada.");return;}
         auto path=*result.unwrap();std::error_code error;auto size=std::filesystem::file_size(path,error);
         if(error||size==0||size>GeoBRConfig::MaxGmdBytes){m_busy=false;status("O arquivo deve ter dados e no maximo 12 MB.");return;}
         auto imported=gmd::importGmdAsLevel(path);

@@ -1,6 +1,7 @@
 #include "GdpsPopups.hpp"
 #include "GeoBRVisuals.hpp"
 #include "UIHelpers.hpp"
+#include "FileAccess.hpp"
 #include "../models/JsonModelUtils.hpp"
 
 #include <Geode/binding/AccountLayer.hpp>
@@ -465,11 +466,23 @@ void MusicLibraryPopup::onUpload(CCObject*) {
 
 void MusicLibraryPopup::pickAndSend(std::string name, std::string artist) {
     m_busy = true;
+    status("Liberando acesso aos arquivos...");
+    WeakRef<MusicLibraryPopup> weak = this;
+    ui::ensureFileAccess([weak, name, artist](bool granted) {
+        auto self = weak.lock();
+        if (!self) return;
+        if (!granted) { self->m_busy = false; self->status(ui::FileAccessDenied); return; }
+        self->openPicker(name, artist);
+    });
+}
+
+void MusicLibraryPopup::openPicker(std::string name, std::string artist) {
     status("Escolha o MP3...");
     file::FilePickOptions options;
     options.filters = {{"MP3", {"*.mp3"}}};
     m_picker.spawn("GeoBR - escolher MP3", file::pick(file::PickMode::OpenFile, options), [this, name, artist](file::PickResult result) {
-        if (result.isErr() || !result.unwrap()) { m_busy = false; status(result.isErr() ? "Nao foi possivel abrir o seletor." : "Envio cancelado."); return; }
+        if (result.isErr()) { m_busy = false; status(ui::pickErrorMessage(result.unwrapErr())); return; }
+        if (!result.unwrap()) { m_busy = false; status("Envio cancelado."); return; }
         auto path = *result.unwrap();
         std::error_code error;
         auto size = std::filesystem::file_size(path, error);
