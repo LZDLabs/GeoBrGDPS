@@ -12,7 +12,7 @@ class AdminForm final:public geode::Popup {
     bool init(AdminEntity,matjson::Value);std::vector<Field> fields()const;
     void status(std::string const&);void setValue(std::string const&,std::string const&);
     std::string value(std::string const&)const;
-    void onSave(cocos2d::CCObject*);void onFile(cocos2d::CCObject*);void onChoice(cocos2d::CCObject*);
+    void onSave(cocos2d::CCObject*);void onFile(cocos2d::CCObject*);void openPicker();void onChoice(cocos2d::CCObject*);
 public:static AdminForm* create(AdminEntity,matjson::Value row={});
 };
 }

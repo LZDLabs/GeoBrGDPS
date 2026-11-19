@@ -139,6 +139,7 @@ private:
     void onMine(cocos2d::CCObject*);
     void onUpload(cocos2d::CCObject*);
     void pickAndSend(std::string name, std::string artist);
+    void openPicker(std::string name, std::string artist);
     void useSong(int row);
 };
 
