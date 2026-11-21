@@ -10,7 +10,7 @@ std::optional<NewsItem> NewsItem::fromJson(matjson::Value const& value) {
     if (!title || title->empty() || !desc) return std::nullopt;
     NewsItem item; item.id=jsonutil::stringOr(value,"id",std::to_string(jsonutil::integerOr(value,"id"))); item.title=std::move(*title); item.description=std::move(*desc);
     item.date=jsonutil::stringOr(value,"date",jsonutil::stringOr(value,"createdAt",jsonutil::stringOr(value,"created_at","Sem data")));
-    item.author=jsonutil::stringOr(value,"author","Equipe GeoBR"); item.isNew=jsonutil::boolOr(value,"isNew",jsonutil::boolOr(value,"new"));
+    item.author=jsonutil::stringOr(value,"author","Equipe GeoBR"); item.imagePath=jsonutil::stringOr(value,"image_path"); item.isNew=jsonutil::boolOr(value,"isNew",jsonutil::boolOr(value,"new"));
     item.priority=static_cast<int>(std::clamp<std::int64_t>(jsonutil::integerOr(value,"priority"),0,100)); item.pinned=jsonutil::boolOr(value,"pinned");
     auto type=lower(jsonutil::stringOr(value,"type","noticia"));
     if(type=="aviso"||type=="notice") item.type=NewsType::Notice; else if(type=="evento"||type=="event") item.type=NewsType::Event;

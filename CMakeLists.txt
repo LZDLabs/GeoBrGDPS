@@ -34,6 +34,11 @@ add_library(${PROJECT_NAME} SHARED
     src/services/GeoPassService.cpp
     src/services/PresenceService.cpp
     src/hooks/LevelTransferHook.cpp
+    src/natal/NatalService.cpp
+    src/natal/NatalHub.cpp
+    src/natal/NatalHooks.cpp
+    src/natal/NatalSpectate.cpp
+    src/natal/NatalTheme.cpp
     src/ui/GeoPassPopup.cpp
     src/ui/GeoBRVisuals.cpp
     src/ui/TierShopPopup.cpp

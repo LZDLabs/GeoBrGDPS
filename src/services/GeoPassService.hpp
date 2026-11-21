@@ -3,7 +3,7 @@
 #include <Geode/Geode.hpp>
 namespace geobr {
 class GeoPassService final:public cocos2d::CCNode {
- CloudRequest m_complete,m_drop,m_rewards,m_refresh,m_name,m_social;
+ CloudRequest m_complete,m_drop,m_rewards,m_refresh,m_name,m_social,m_newsCheck;
  geode::async::TaskHolder<geode::utils::web::WebResponse> m_notices;
  std::vector<matjson::Value> m_queue;
  matjson::Value m_state=matjson::Value::object();

@@ -40,14 +40,16 @@ bool s_checked = false;
 
 // Other packages of the same mod in the mods folder (e.g. "geobr.geobrmod (1).geode"
 // from a manual copy): Geode loads only one of them, maybe the old one.
-void removeDuplicates(std::string const& id, std::filesystem::path const& keep) {
+// Only older (or equal) valid copies are removed: a newer package copied by hand
+// is never touched, nor a file Geode cannot read.
+void removeDuplicates(std::string const& id, std::filesystem::path const& keep, VersionInfo const& upTo) {
     std::error_code error;
     for (auto const& entry : std::filesystem::directory_iterator(dirs::getModsDir(), error)) {
         std::error_code e;
         if (!entry.is_regular_file(e) || entry.path().extension() != ".geode") continue;
         if (std::filesystem::equivalent(entry.path(), keep, e)) continue;
         auto metadata = ModMetadata::createFromGeodeFile(entry.path());
-        if (metadata.getID() != id) continue;
+        if (metadata.getID() != id || !metadata.getErrors().empty() || metadata.getVersion() > upTo) continue;
         std::filesystem::remove(entry.path(), e);
         log::warn("Update: removed duplicate package {} ({})", entry.path().filename().string(), e ? e.message() : "ok");
     }
@@ -148,7 +150,7 @@ void install(std::shared_ptr<std::vector<Package>> list, size_t index, int insta
             finish(installed, fmt::format("{}: nao foi possivel substituir o pacote", pkg.name));
             return;
         }
-        removeDuplicates(pkg.id, target);
+        if (auto installedVersion = VersionInfo::parse(pkg.version)) removeDuplicates(pkg.id, target, installedVersion.unwrap());
         if (auto staged = stageBinary(target); !staged) {
             finish(installed, fmt::format("{}: pacote salvo, mas o binario nao foi preparado ({})", pkg.name, staged.unwrapErr()));
             return;
@@ -167,7 +169,7 @@ void repairStaleBinary(char const* compiledVersion) {
     static bool done = false;
     if (done) return;
     done = true;
-    removeDuplicates(Mod::get()->getID(), Mod::get()->getPackagePath());
+    removeDuplicates(Mod::get()->getID(), Mod::get()->getPackagePath(), Mod::get()->getVersion());
     auto packaged = Mod::get()->getVersion().toVString();
     auto running = std::string("v") + compiledVersion;
     if (packaged == running || packaged == compiledVersion) return;

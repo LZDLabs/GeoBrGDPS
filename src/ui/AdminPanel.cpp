@@ -9,8 +9,8 @@
 #include <array>
 using namespace geode::prelude;
 namespace geobr {
-std::string adminTable(AdminEntity e){static const std::array<std::string,9> tables{"geobr_news","geobr_announcements","geobr_pass_seasons","geobr_pass_rewards","geobr_quest_steps","geobr_main_levels","geobr_shop_items","geobr_level_ranks","geobr_account_links"};return tables[static_cast<int>(e)];}
-std::string adminTitle(AdminEntity e){static const std::array<std::string,9> titles{"Noticias","Avisos","Temporadas","Premios","Quests","Main Levels","Tier Shop","Ranking","Contas"};return titles[static_cast<int>(e)];}
+std::string adminTable(AdminEntity e){static const std::array<std::string,10> tables{"geobr_news","geobr_announcements","geobr_pass_seasons","geobr_pass_rewards","geobr_quest_steps","geobr_main_levels","geobr_shop_items","geobr_level_ranks","geobr_account_links","geobr_natal_levels"};return tables[static_cast<int>(e)];}
+std::string adminTitle(AdminEntity e){static const std::array<std::string,10> titles{"Noticias","Avisos","Temporadas","Premios","Quests","Main Levels","Tier Shop","Ranking","Contas","Natal"};return titles[static_cast<int>(e)];}
 AdminLogin* AdminLogin::create(){auto p=new AdminLogin;if(p->init()){p->autorelease();return p;}delete p;return nullptr;}
 bool AdminLogin::init(){
     if(!Popup::init(320,185))return false;visual::fitPopup(m_mainLayer,{320,185});visual::stylePopup(m_mainLayer,m_bgSprite,{320,185},{53,39,78});setTitle("Acesso ADM","goldFont.fnt",.7f,15);setID("geobr-admin-login");
@@ -31,7 +31,7 @@ AdminPanel* AdminPanel::create(){auto p=new AdminPanel;if(p->init()){p->autorele
 bool AdminPanel::init(){
     if(!Popup::init(520,330))return false;visual::fitPopup(m_mainLayer,{520,330});visual::stylePopup(m_mainLayer,m_bgSprite,{520,330},{53,39,78});auto bg=visual::theme({506,316},"cosmos");bg->setPosition({7,7});m_mainLayer->addChild(bg,-1);setID("geobr-admin-panel");setTitle("Painel ADM - GeoBR","goldFont.fnt",.7f,17);
     auto menu=CCMenu::create();menu->setPosition({0,0});m_mainLayer->addChild(menu,5);
-    for(int i=0;i<9;++i){auto button=ui::makeTextButton(adminTitle(static_cast<AdminEntity>(i)),106,"GJ_button_04.png",this,menu_selector(AdminPanel::onTab),.28f,24);button->setPosition({73.f,267.f-i*26.f});button->setTag(i);menu->addChild(button);}
+    for(int i=0;i<10;++i){auto button=ui::makeTextButton(adminTitle(static_cast<AdminEntity>(i)),106,i==9?"GJ_button_06.png":"GJ_button_04.png",this,menu_selector(AdminPanel::onTab),.28f,24);button->setPosition({73.f,267.f-i*24.f});button->setTag(i);menu->addChild(button);}
     m_list=ScrollLayer::create({355,196},true,true);m_list->setPosition({145,72});m_list->m_contentLayer->setLayout(ScrollLayer::createDefaultListLayout(5));m_mainLayer->addChild(m_list);
     auto add=ui::makeTextButton("Novo",85,"GJ_button_01.png",this,menu_selector(AdminPanel::onNew),.36f,29);add->setPosition({185,38});menu->addChild(add);
     for(int i=0;i<2;++i){auto b=ui::makeTextButton(i?">":"<",40,"GJ_button_04.png",this,menu_selector(AdminPanel::onPage),.45f,28);b->setPosition({260.f+i*48.f,38});b->setTag(i?1:-1);menu->addChild(b);}

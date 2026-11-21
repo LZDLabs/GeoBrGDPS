@@ -9,6 +9,9 @@
 #include <Geode/binding/GameManager.hpp>
 #include <Geode/binding/PlayLayer.hpp>
 #include <Geode/ui/Notification.hpp>
+#include <Geode/ui/LazySprite.hpp>
+#include <Geode/ui/Popup.hpp>
+#include <Geode/ui/TextArea.hpp>
 #include <algorithm>
 #include <ctime>
 #define MORE_ICONS_EVENTS
@@ -37,7 +40,18 @@ static void checkFollowElders(matjson::Value const& state){
 }
 void GeoPassService::tick(float){sendNext();if(!PlayLayer::get()){++m_ticks;if(m_ticks%3==1||!m_queue.empty())refresh();if(m_ticks%3==2)checkFollowElders(m_state);if(m_ticks%6==1)notices();
  auto cursor=Mod::get()->getSavedValue<int64_t>("social-cursor",0);
- m_social.call("GET",fmt::format("/rest/v1/geobr_social_notifications?select=id,kind,body&order=id.asc&id=gt.{}&limit=5",cursor),{},[this,cursor](auto r){
+ if(cursor<=0){
+  // First time on this device/account: start after the newest one, old ones are not shown again.
+  m_social.call("GET","/rest/v1/geobr_social_notifications?select=id&order=id.desc&limit=1",{},[this](auto r){
+   if(!r.success||!r.value.isArray())return;int64_t latest=1;
+   for(auto const& n:r.value.asArray().unwrap())latest=std::max(latest,jsonutil::integerOr(n,"id"));
+   Mod::get()->setSavedValue("social-cursor",latest);persistPassState();
+  });
+  return;
+ }
+ // Only recent ones (last 30 min) pop up; older ones (offline for a while) stay in the lists.
+ auto since=std::time(nullptr)-1800;char stamp[32];std::strftime(stamp,sizeof(stamp),"%Y-%m-%dT%H:%M:%SZ",std::gmtime(&since));
+ m_social.call("GET",fmt::format("/rest/v1/geobr_social_notifications?select=id,kind,body&order=id.asc&id=gt.{}&created_at=gt.{}&limit=5",cursor,stamp),{},[this,cursor](auto r){
  if(PlayLayer::get()||!r.success||!r.value.isArray())return;auto latest=cursor;
  for(auto const& n:r.value.asArray().unwrap()){Notification::create(jsonutil::stringOr(n,"body"),NotificationIcon::Info,4.f)->show();latest=std::max(latest,jsonutil::integerOr(n,"id"));}
  if(latest!=cursor){Mod::get()->setSavedValue("social-cursor",latest);persistPassState();}
@@ -113,21 +127,59 @@ void GeoPassService::sendNext(){
   // Next event is dispatched by the 1-second drain, outside this request callback.
  });
 }
+namespace {
+// A notice from the staff: title, picture (if any) and text, on top of any menu.
+class NoticePopup final:public geode::Popup{
+public:
+    static NoticePopup* create(std::string const& title,std::string const& text,std::string const& image){auto p=new NoticePopup;if(p->init(title,text,image)){p->autorelease();return p;}delete p;return nullptr;}
+private:
+    bool init(std::string const& title,std::string const& text,std::string const& image){
+        bool pic=!image.empty();
+        if(!Popup::init(380.f,pic?270.f:170.f))return false;
+        setTitle(title.empty()?"Aviso":title);
+        auto size=m_mainLayer->getContentSize();
+        if(pic){auto img=LazySprite::create({340.f,140.f},true);img->setAutoResize(true);img->setPosition({size.width/2,size.height-110.f});
+            img->loadFromUrl(GeoBRConfig::supabaseUrl()+"/storage/v1/object/public/geobr-news-images/"+image);m_mainLayer->addChild(img);}
+        auto body=SimpleTextArea::create(text,"chatFont.fnt",.6f,340.f);body->setAlignment(kCCTextAlignmentCenter);body->setWrappingMode(WrappingMode::WORD_WRAP);body->setMaxLines(4);
+        body->setPosition({size.width/2,pic?44.f:size.height/2-10.f});m_mainLayer->addChild(body);
+        return true;
+    }
+};
+}
+// Staff notices and news reach everyone with the mod open (global): a notice with
+// a picture opens as a window, the rest as a toast. A new device does not replay
+// the old ones: it starts from the newest.
 void GeoPassService::notices(){
     if(m_notices.isPending())return;
     auto time=std::time(nullptr);char stamp[32];std::strftime(stamp,sizeof(stamp),"%Y-%m-%dT%H:%M:%SZ",std::gmtime(&time));
     auto cursor=Mod::get()->getSavedValue<int64_t>("announcement-cursor",0);
-    m_notices.spawn("GeoBR - avisos",ApiClient::getSupabase(GeoBRConfig::supabaseTableUrl("geobr_announcements"),
-        {{"published","eq.true"},{"id","gt."+std::to_string(cursor)},{"expires_at",std::string("gt.")+stamp},{"order","id.asc"},{"limit","3"}}),[cursor](auto response){
+    std::vector<std::pair<std::string,std::string>> q{{"published","eq.true"},{"expires_at",std::string("gt.")+stamp}};
+    if(cursor>0){q.push_back({"id","gt."+std::to_string(cursor)});q.push_back({"order","id.asc"});q.push_back({"limit","3"});}
+    else{q.push_back({"order","id.desc"});q.push_back({"limit","1"});}
+    m_notices.spawn("GeoBR - avisos",ApiClient::getSupabase(GeoBRConfig::supabaseTableUrl("geobr_announcements"),q),[cursor](auto response){
         if(PlayLayer::get())return;
         auto result=CloudService::decode(response);
         if(!result.success||!result.value.isArray())return;
-        auto latest=cursor;
+        auto latest=std::max<int64_t>(cursor,1);
         for(auto const& item:result.value.asArray().unwrap()){
-            Notification::create(jsonutil::stringOr(item,"title")+": "+jsonutil::stringOr(item,"message"),NotificationIcon::Info,8.f)->show();
+            auto image=jsonutil::stringOr(item,"image_path");
+            if(!image.empty()){if(auto p=NoticePopup::create(jsonutil::stringOr(item,"title"),jsonutil::stringOr(item,"message"),image))p->show();}
+            else Notification::create(jsonutil::stringOr(item,"title")+": "+jsonutil::stringOr(item,"message"),NotificationIcon::Info,8.f)->show();
             latest=std::max(latest,jsonutil::integerOr(item,"id"));
         }
         if(latest!=cursor){Mod::get()->setSavedValue("announcement-cursor",latest);persistPassState();}
+    });
+    // News: a global toast when a new one is published (first run: start from the newest, silently).
+    auto news=Mod::get()->getSavedValue<int64_t>("news-cursor",0);
+    m_newsCheck.call("GET",news>0?fmt::format("/rest/v1/geobr_news?select=id,title&published=eq.true&id=gt.{}&order=id.asc&limit=3",news)
+                                 :std::string("/rest/v1/geobr_news?select=id&published=eq.true&order=id.desc&limit=1"),{},[news](auto r){
+        if(!r.success||!r.value.isArray())return;
+        auto latest=std::max<int64_t>(news,1);
+        for(auto const& n:r.value.asArray().unwrap()){
+            if(news>0&&!PlayLayer::get())Notification::create("Nova noticia: "+jsonutil::stringOr(n,"title"),NotificationIcon::Info,6.f)->show();
+            latest=std::max(latest,jsonutil::integerOr(n,"id"));
+        }
+        if(latest!=news)Mod::get()->setSavedValue("news-cursor",latest);
     });
 }
 std::string GeoPassService::rewardLabel(matjson::Value const& r){

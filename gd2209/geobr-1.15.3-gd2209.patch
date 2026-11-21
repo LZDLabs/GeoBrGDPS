@@ -1,0 +1,928 @@
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2026-11-19 18:59:59.933176256 +0000
++++ b/CMakeLists.txt	2026-11-21 16:12:18.421735463 +0000
+@@ -79,6 +79,11 @@
+     src/services/UpdateService.cpp
+ )
+ target_include_directories(${PROJECT_NAME} PRIVATE src)
++if(MSVC)
++    target_compile_options(${PROJECT_NAME} PRIVATE "/FI${CMAKE_CURRENT_SOURCE_DIR}/src/compat/Geode6Compat.hpp")
++else()
++    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/src/compat/Geode6Compat.hpp>")
++endif()
+ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+ if(NOT DEFINED ENV{GEODE_SDK})
+     message(FATAL_ERROR "GEODE_SDK is not set. Point it to the Geode SDK directory.")
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/gdps-core/mod.json b/gdps-core/mod.json
+--- a/gdps-core/mod.json	2026-11-15 14:34:57.000000000 +0000
++++ b/gdps-core/mod.json	2026-11-21 16:01:25.858029783 +0000
+@@ -1,8 +1,8 @@
+ {
+-  "geode": "5.9.0",
++  "geode": "6.0.0-beta.1",
+   "gd": {
+-    "android": "2.2081",
+-    "win": "2.2081"
++    "android": "2.2091",
++    "win": "2.2091"
+   },
+   "id": "geobr.gdps",
+   "name": "GeoBR GDPS",
+@@ -14,10 +14,13 @@
+     "server": {
+       "type": "string",
+       "default": "Oficial",
+-      "one-of": ["Oficial", "GDPS GeoBR"],
++      "one-of": [
++        "Oficial",
++        "GDPS GeoBR"
++      ],
+       "name": "Servidor",
+       "description": "Oficial: o GD normal, com seu save e sua conta de sempre. GDPS GeoBR: o servidor GeoBR, com save e conta separados. O jogo reinicia para trocar.",
+       "requires-restart": true
+     }
+   }
+-}
++}
+\ No newline at end of file
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/gdps-core/src/main.cpp b/gdps-core/src/main.cpp
+--- a/gdps-core/src/main.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/gdps-core/src/main.cpp	2026-11-21 16:03:14.324728176 +0000
+@@ -63,7 +63,7 @@
+                 // Never fall back to the official file: without the folder GD fails
+                 // to save instead of mixing the two servers.
+                 if (error) log::error("GeoBR GDPS: could not create {}: {}", dir.string(), error.message());
+-                m_fileName = gd::string(GdpsFolder + name);
++                m_fileName = std::string(GdpsFolder) + name;
+                 log::info("GeoBR GDPS: {} -> {}", name, std::string(m_fileName));
+             }
+         }
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/mod.json b/mod.json
+--- a/mod.json	2026-11-19 19:57:19.294616142 +0000
++++ b/mod.json	2026-11-21 16:06:24.215850203 +0000
+@@ -1,10 +1,8 @@
+ {
+-  "geode": "5.9.0",
++  "geode": "6.0.0-beta.1",
+   "gd": {
+-    "android": "2.2081",
+-    "win": "2.2081",
+-    "mac": "2.2081",
+-    "ios": "2.2081"
++    "android": "2.2091",
++    "win": "2.2091"
+   },
+   "id": "geobr.geobrmod",
+   "name": "GeoBR Mod",
+@@ -12,8 +10,6 @@
+   "developer": "GeoBR",
+   "description": "GeoBR: GDPS proprio (com o mod GeoBR GDPS), levels, caixas, passe, comunidade, TOP e o gamemode Arrow.",
+   "dependencies": {
+-    "hjfod.gmd-api": "1.5.0",
+-    "hiimjustin000.more_icons": ">=2.1.0",
+     "geobr.gdps": ">=1.0.3"
+   },
+   "resources": {
+@@ -137,7 +133,11 @@
+       "name": "Quem ve quando estou online",
+       "description": "Bolinha no perfil (verde online, cinza inativo, vermelha fora ha muito tempo) e o 'visto por ultimo'.",
+       "default": "Todos",
+-      "one-of": ["Todos", "Amigos", "Ninguem"]
++      "one-of": [
++        "Todos",
++        "Amigos",
++        "Ninguem"
++      ]
+     },
+     "ui-density": {
+       "type": "int",
+@@ -148,4 +148,4 @@
+       "max": 1
+     }
+   }
+-}
++}
+\ No newline at end of file
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/collab/CollabHooks.cpp b/src/collab/CollabHooks.cpp
+--- a/src/collab/CollabHooks.cpp	2026-11-19 18:59:59.973176258 +0000
++++ b/src/collab/CollabHooks.cpp	2026-11-21 16:12:34.064934636 +0000
+@@ -201,19 +201,34 @@
+ // Saving a collab level: the host and the ADMs save the room's level; the
+ // others' edits are already in the room (live), so nothing is overwritten.
+ class $modify(GeoBRCollabPause, EditorPauseLayer) {
+-    void saveLevel() {
+-        EditorPauseLayer::saveLevel();
+-        auto room = roomOfEditor(m_editorLayer);
++    // Room and level are read before GD saves (Save and Exit closes the editor).
++    static void saveRoom(std::string const& room, std::string const& level) {
+         if (room.empty()) return;
+         if (!geobr::collab::canSaveRoom(room)) {
+             Notification::create("Collab: so o host e os ADMs salvam o level. Suas edicoes ja estao na sala.", NotificationIcon::Info, 3.f)->show();
+             return;
+         }
+-        std::string level = m_editorLayer->getLevelString();
+         CollabService::get()->saveSnapshot(room, level, [](bool ok, std::string message) {
+             Notification::create(ok ? "Collab: level da sala salvo" : message, ok ? NotificationIcon::Success : NotificationIcon::Warning, 2.f)->show();
+         });
+     }
++    std::pair<std::string, std::string> roomState() {
++        auto room = roomOfEditor(m_editorLayer);
++        if (room.empty()) return {};
++        return {room, std::string(m_editorLayer->getLevelString())};
++    }
++#ifdef GEODE_IS_WINDOWS
++    // GD 2.2091 on Windows has saveLevel inlined into the three save buttons.
++    void onSave(CCObject* sender) { auto [room, level] = roomState(); EditorPauseLayer::onSave(sender); saveRoom(room, level); }
++    void onSaveAndPlay(CCObject* sender) { auto [room, level] = roomState(); EditorPauseLayer::onSaveAndPlay(sender); saveRoom(room, level); }
++    void onSaveAndExit(CCObject* sender) { auto [room, level] = roomState(); EditorPauseLayer::onSaveAndExit(sender); saveRoom(room, level); }
++#else
++    void saveLevel() {
++        EditorPauseLayer::saveLevel();
++        auto [room, level] = roomState();
++        saveRoom(room, level);
++    }
++#endif
+ };
+ 
+ // Publishing a collab level: host and ADMs only.
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/collab/CollabLive.cpp b/src/collab/CollabLive.cpp
+--- a/src/collab/CollabLive.cpp	2026-11-19 18:59:59.977176258 +0000
++++ b/src/collab/CollabLive.cpp	2026-11-21 16:09:16.605395118 +0000
+@@ -82,7 +82,7 @@
+ // so a crash leaves the last step on disk. On the next start, an unfinished
+ // trace (no END) and the tail of the previous Geode log are sent to the
+ // server for diagnosis (tokens removed), then the file is renamed.
+-std::filesystem::path tracePath() { return Mod::get()->getSaveDir() / "collab-trace.txt"; }
++std::filesystem::path tracePath() { return geobr6::stdp(Mod::get()->getSaveDir()) / "collab-trace.txt"; }
+ std::ofstream s_trace;
+ size_t s_traceLines = 0;
+ 
+@@ -137,7 +137,7 @@
+ std::filesystem::path previousGeodeLog() {
+     std::error_code ec;
+     std::vector<std::filesystem::directory_entry> logs;
+-    for (auto const& entry : std::filesystem::directory_iterator(dirs::getGeodeLogDir(), ec))
++    for (auto const& entry : std::filesystem::directory_iterator(geobr6::stdp(dirs::getGeodeLogDir()), ec))
+         if (entry.is_regular_file(ec) && entry.path().extension() == ".log") logs.push_back(entry);
+     if (logs.size() < 2) return {};
+     std::sort(logs.begin(), logs.end(), [](auto const& a, auto const& b) {
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/collab/CollabService.cpp b/src/collab/CollabService.cpp
+--- a/src/collab/CollabService.cpp	2026-11-19 18:51:19.169145300 +0000
++++ b/src/collab/CollabService.cpp	2026-11-21 16:09:16.507321188 +0000
+@@ -45,9 +45,9 @@
+ // An empty GD level (default settings) so a brand new room is tagged too.
+ constexpr char EmptyHeader[] = "kA13,0,kA15,0,kA16,0,kA14,,kA6,0,kA7,0,kA17,0,kA18,0,kS39,0,kA2,0,kA3,0,kA8,0,kA4,0,kA9,0,kA10,0,kA11,0";
+ 
+-std::filesystem::path baseDir() { return Mod::get()->getSaveDir() / "collab"; }
++std::filesystem::path baseDir() { return geobr6::stdp(Mod::get()->getSaveDir()) / "collab"; }
+ 
+-void saveLocalLevels() { LocalLevelManager::sharedState()->save(); }
++void saveLocalLevels() { LocalLevelManager::sharedState()->save(false); }
+ }
+ 
+ std::string roomOfSettings(LevelSettingsObject* settings) {
+@@ -100,7 +100,7 @@
+ }
+ 
+ std::string CollabService::packForGame(std::string const& level) {
+-    return withoutNul(std::string(ZipUtils::compressString(gd::string(withoutNul(level)), false, 0)));
++    return withoutNul(std::string(ZipUtils::compressString(withoutNul(level), false, 0, 6)));
+ }
+ 
+ std::string CollabService::compress(std::string const& level) {
+@@ -141,7 +141,7 @@
+ CollabService::Base CollabService::loadBase(std::string const& room) {
+     Base base;
+     if (!validRoomID(room)) return base;
+-    auto text = utils::file::readString(baseDir() / (room + ".base"));
++    auto text = utils::file::readString(geobr6::aspp(baseDir() / (room + ".base")));
+     if (text.isErr()) return base;
+     base.level = text.unwrap();
+     base.revision = Mod::get()->getSavedValue<int64_t>("collab-rev-" + room, 0);
+@@ -153,7 +153,7 @@
+     if (!validRoomID(room)) return;
+     std::error_code ec;
+     std::filesystem::create_directories(baseDir(), ec);
+-    if (utils::file::writeString(baseDir() / (room + ".base"), level).isErr()) log::warn("GeoBR collab: could not store the base of {}", room);
++    if (utils::file::writeString(geobr6::aspp(baseDir() / (room + ".base")), level).isErr()) log::warn("GeoBR collab: could not store the base of {}", room);
+     Mod::get()->setSavedValue("collab-rev-" + room, revision);
+ }
+ 
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/compat/Geode6Compat.hpp b/src/compat/Geode6Compat.hpp
+--- a/src/compat/Geode6Compat.hpp	1970-01-01 00:00:00.000000000 +0000
++++ b/src/compat/Geode6Compat.hpp	2026-11-21 16:09:16.599592602 +0000
+@@ -0,0 +1,19 @@
++#pragma once
++// GD 2.2091 / Geode 6 build of GeoBR 1.15.3 (no Natal content).
++// GD 2.2091 uses std::string everywhere (gd::string is gone) and Geode 6
++// paths are asp::fs::Path; these two helpers keep the 1.15.3 code as it was.
++#include <string>
++#include <filesystem>
++#include <asp/fs/std.hpp>
++
++namespace gd { using string = std::string; }
++
++namespace geobr6 {
++inline std::filesystem::path stdp(asp::fs::PathView p) { return std::filesystem::path(p.native()); }
++inline asp::fs::Path aspp(std::filesystem::path const& p) { return asp::fs::Path::fromStdPath(p); }
++} // namespace geobr6
++
++namespace geobr6 {
++inline std::string pathStr(std::filesystem::path const& p) { return p.string(); }
++inline std::string pathStr(asp::fs::PathView p) { return std::string(p.string()); }
++} // namespace geobr6
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/compat/LocalGmd.hpp b/src/compat/LocalGmd.hpp
+--- a/src/compat/LocalGmd.hpp	1970-01-01 00:00:00.000000000 +0000
++++ b/src/compat/LocalGmd.hpp	2026-11-21 16:09:22.099502591 +0000
+@@ -0,0 +1,59 @@
++#pragma once
++// GD 2.2091 build: the GMD API mod has no Geode 6 release yet, so the few
++// .gmd calls GeoBR makes (plain .gmd only) are done here with GD's own
++// DS_Dictionary, the same coder the game uses for its save files.
++#include <Geode/Geode.hpp>
++#include <filesystem>
++#include <memory>
++#include <string>
++
++namespace gmd {
++
++enum class GmdFileType { Gmd };
++
++namespace detail {
++inline void preparePlist(std::string& data) {
++    for (auto& c : data) if (!c) c = ' ';
++    auto head = data.substr(0, 100);
++    if (auto at = head.find("<plist version=\"1.0\">"); at != std::string::npos)
++        data.replace(at, 21, "<plist version=\"1.0\" gjver=\"2.0\">");
++    if (data.starts_with("<?xml version")) return;
++    if (data.substr(0, 100).find("<plist version") == std::string::npos)
++        data = "<?xml version=\"1.0\"?><plist version=\"1.0\" gjver=\"2.0\"><dict><k>root</k>" + data + "</dict></plist>";
++    else
++        data = "<?xml version=\"1.0\"?>" + data;
++}
++} // namespace detail
++
++inline geode::Result<GJGameLevel*> importGmdAsLevel(std::filesystem::path const& from) {
++    auto text = geode::utils::file::readString(geobr6::aspp(from));
++    if (text.isErr()) return geode::Err("Nao foi possivel ler o arquivo");
++    auto data = text.unwrap();
++    detail::preparePlist(data);
++    auto dict = std::make_unique<DS_Dictionary>();
++    if (!dict->loadRootSubDictFromString(data)) return geode::Err("Arquivo .gmd invalido");
++    dict->stepIntoSubDictWithKey("root");
++    auto level = GJGameLevel::create();
++    level->dataLoaded(dict.get());
++    level->m_isEditable = true;
++    level->m_levelType = GJLevelType::Editor;
++    level->m_stars = 0;
++    level->m_demon = 0;
++    level->m_dailyID = 0;
++    level->m_gauntletLevel = false;
++    level->m_gauntletLevel2 = false;
++    if (level->m_levelString.empty()) level->m_levelString = dict->getStringForKey("k4");
++    return geode::Ok(level);
++}
++
++inline geode::Result<> exportLevelAsGmd(GJGameLevel* level, std::filesystem::path const& to, GmdFileType = GmdFileType::Gmd) {
++    if (!level) return geode::Err("Fase vazia");
++    auto dict = std::make_unique<DS_Dictionary>();
++    level->encodeWithCoder(dict.get());
++    std::string data = dict->saveRootSubDictToString();
++    if (auto written = geode::utils::file::writeString(geobr6::aspp(to), data); written.isErr())
++        return geode::Err("Nao foi possivel salvar o arquivo");
++    return geode::Ok();
++}
++
++} // namespace gmd
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/compat/MoreIconsOff.hpp b/src/compat/MoreIconsOff.hpp
+--- a/src/compat/MoreIconsOff.hpp	1970-01-01 00:00:00.000000000 +0000
++++ b/src/compat/MoreIconsOff.hpp	2026-11-21 16:06:24.189691781 +0000
+@@ -0,0 +1,21 @@
++#pragma once
++// GD 2.2091 build: More Icons has no Geode 6 release yet. Without it the
++// profile shows the player's normal GD icon and the GeoBR robots pack is not
++// added to the icon kit; nothing else changes.
++#include <Geode/Geode.hpp>
++#include <filesystem>
++#include <string>
++
++struct IconInfo {
++    std::string getName() const { return {}; }
++};
++
++namespace more_icons {
++inline IconInfo* getIcon(std::string const&, IconType) { return nullptr; }
++inline IconInfo* activeIcon(IconType) { return nullptr; }
++inline void updateSimplePlayer(SimplePlayer*, IconInfo*) {}
++inline IconInfo* addIcon(std::string, std::string, IconType, std::filesystem::path, std::filesystem::path,
++                         cocos2d::TextureQuality, std::string = {}, std::string = {}, bool = false, bool = false) {
++    return nullptr;
++}
++} // namespace more_icons
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/gameplay/GeoBRRobotPack.cpp b/src/gameplay/GeoBRRobotPack.cpp
+--- a/src/gameplay/GeoBRRobotPack.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/gameplay/GeoBRRobotPack.cpp	2026-11-21 16:09:16.579634432 +0000
+@@ -1,6 +1,6 @@
+ #include "GeoBRRobotPack.hpp"
+ 
+-#include "../integrations/MoreIconsAPI.hpp"
++#include "../compat/MoreIconsOff.hpp"
+ 
+ #include <Geode/Geode.hpp>
+ 
+@@ -34,7 +34,7 @@
+     if (registered) return;
+ 
+     // Geode namespaces and flattens declared resources into this directory.
+-    auto resourceDir = Mod::get()->getResourcesDir();
++    auto resourceDir = geobr6::stdp(Mod::get()->getResourcesDir());
+     std::size_t count = 0;
+ 
+     for (auto const& asset : RobotAssets) {
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/gdps/GdpsService.cpp b/src/gdps/GdpsService.cpp
+--- a/src/gdps/GdpsService.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/gdps/GdpsService.cpp	2026-11-21 16:07:21.395311658 +0000
+@@ -100,7 +100,7 @@
+     WebRequest request;
+     request.header("Content-Type", "application/json").header("Accept", "application/json")
+         .userAgent(std::string("GeoBR-Mod/") + ClientVersion)
+-        .timeout(std::chrono::seconds{25}).certVerification(true).followRedirects(false);
++        .timeout(asp::Duration::fromSecs(static_cast<long long>(25))).certVerification(true).followRedirects(false);
+     request.bodyJSON(body);
+     auto generation = m_generation;
+     auto expected = *generation;
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/godeditor/GodEditor.cpp b/src/godeditor/GodEditor.cpp
+--- a/src/godeditor/GodEditor.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/godeditor/GodEditor.cpp	2026-11-21 16:09:16.578925041 +0000
+@@ -552,8 +552,8 @@
+         for (auto const& [channel, color] : m_colors) {
+             raw += fmt::format("1,899,2,0,3,{},7,{},8,{},9,{},10,0,23,{};", 405 + channel % 7 * 30, color.r, color.g, color.b, channel);
+         }
+-        play->m_level->m_levelString = ZipUtils::compressString(raw, false, 0);
+-        LocalLevelManager::sharedState()->save();
++        play->m_level->m_levelString = ZipUtils::compressString(raw, false, 0, 6);
++        LocalLevelManager::sharedState()->save(false);
+         Notification::create(fmt::format("Salvo: {} objeto(s), {} cor(es)", m_placed.size(), m_colors.size()), NotificationIcon::Success, 2.f)->show();
+         m_placed.clear();
+         m_colors.clear();
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/hooks/LevelTransferHook.cpp b/src/hooks/LevelTransferHook.cpp
+--- a/src/hooks/LevelTransferHook.cpp	2026-11-19 19:12:33.921703132 +0000
++++ b/src/hooks/LevelTransferHook.cpp	2026-11-21 16:09:16.560591457 +0000
+@@ -12,7 +12,7 @@
+ #include <Geode/modify/MenuLayer.hpp>
+ #include <Geode/ui/BasedButtonSprite.hpp>
+ #include <Geode/ui/Notification.hpp>
+-#include <hjfod.gmd-api/include/GMD.hpp>
++#include "../compat/LocalGmd.hpp"
+ 
+ #include <ctime>
+ #include <filesystem>
+@@ -21,7 +21,7 @@
+ 
+ namespace {
+ 
+-std::filesystem::path transferDir() { return Mod::get()->getSaveDir() / "levar-gdps"; }
++std::filesystem::path transferDir() { return geobr6::stdp(Mod::get()->getSaveDir()) / "levar-gdps"; }
+ 
+ std::string safeName(std::string name) {
+     for (auto& c : name) if (!std::isalnum(static_cast<unsigned char>(c))) c = '_';
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/hooks/MainLevelProgressHook.cpp b/src/hooks/MainLevelProgressHook.cpp
+--- a/src/hooks/MainLevelProgressHook.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/hooks/MainLevelProgressHook.cpp	2026-11-21 16:09:16.603198068 +0000
+@@ -12,7 +12,7 @@
+ class $modify(GeoBRPassPlayLayer,PlayLayer){
+  struct Fields{std::string attempt,run;bool deathSent=false,completeSent=false,reachSent=false;float elapsed=0;};
+  void beginQuestAttempt(){m_fields->attempt=geobr::visual::uuid();m_fields->run=geobr::GeoPassService::get()->currentRun();m_fields->elapsed=0;m_fields->deathSent=false;m_fields->completeSent=false;m_fields->reachSent=false;}
+- bool init(GJGameLevel* level,bool replay,bool empty){if(!PlayLayer::init(level,replay,empty))return false;beginQuestAttempt();return true;}
++ bool init(GJGameLevel* level,bool empty){if(!PlayLayer::init(level,empty))return false;beginQuestAttempt();return true;}
+  void resetLevel(){PlayLayer::resetLevel();beginQuestAttempt();}
+  matjson::Value questEvent(std::string const& kind,int pct){
+   if(!m_level||m_isTestMode)return {};int id=m_level->m_levelID.value();if(id<=0)return {};std::string scope;
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/services/ApiClient.cpp b/src/services/ApiClient.cpp
+--- a/src/services/ApiClient.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/services/ApiClient.cpp	2026-11-21 16:07:21.397905338 +0000
+@@ -3,7 +3,7 @@
+ #include "../config/GeoBRConfig.hpp"
+ #include <fmt/format.h>
+ namespace geobr {using geode::utils::web::WebRequest;using geode::utils::web::WebResponse;
+-void ApiClient::configure(WebRequest&r,std::chrono::seconds timeout){r.header("Accept","application/json").header("x-geobr-version",ClientVersion).userAgent(std::string("GeoBR-Mod/")+ClientVersion).timeout(timeout).certVerification(true).followRedirects(true);}
++void ApiClient::configure(WebRequest&r,std::chrono::seconds timeout){r.header("Accept","application/json").header("x-geobr-version",ClientVersion).userAgent(std::string("GeoBR-Mod/")+ClientVersion).timeout(asp::Duration::fromSecs(static_cast<long long>(timeout.count()))).certVerification(true).followRedirects(true);}
+ geode::utils::web::WebFuture ApiClient::get(std::string_view ep,QueryParams const&p){WebRequest r;configure(r,GeoBRConfig::RequestTimeout);for(auto const&[k,v]:p)r.param(k,v);return r.get(GeoBRConfig::endpointUrl(ep));}
+ geode::utils::web::WebFuture ApiClient::post(std::string_view ep,matjson::Value const&b){WebRequest r;configure(r,GeoBRConfig::RequestTimeout);r.header("Content-Type","application/json").bodyJSON(b);return r.post(GeoBRConfig::endpointUrl(ep));}
+ geode::utils::web::WebFuture ApiClient::getAuthorized(std::string url,std::string_view token,QueryParams const&p,std::chrono::seconds timeout){WebRequest r;configure(r,timeout);r.header("Authorization",fmt::format("Bearer {}",token));for(auto const&[k,v]:p)r.param(k,v);return r.get(std::move(url));}
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/services/CloudService.cpp b/src/services/CloudService.cpp
+--- a/src/services/CloudService.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/services/CloudService.cpp	2026-11-21 16:07:21.394598783 +0000
+@@ -45,7 +45,7 @@
+     auto refresh=Mod::get()->getSavedValue<std::string>("cloud-refresh-token");
+     WebRequest request;
+     request.header("apikey",GeoBRConfig::supabasePublishableKey()).header("Content-Type","application/json")
+-        .timeout(std::chrono::seconds{15}).certVerification(true).followRedirects(false);
++        .timeout(asp::Duration::fromSecs(static_cast<long long>(15))).certVerification(true).followRedirects(false);
+     request.bodyJSON(refresh.empty()?matjson::Value::object():matjson::makeObject({{"refresh_token",refresh}}));
+     authTask.spawn("GeoBR - sessao",request.post(GeoBRConfig::supabaseUrl()+
+         (refresh.empty()?"/auth/v1/signup":"/auth/v1/token?grant_type=refresh_token")),[hadRefresh=!refresh.empty()](auto response){
+@@ -79,7 +79,7 @@
+     request.header("apikey",GeoBRConfig::supabasePublishableKey()).header("Authorization","Bearer "+token)
+         .header("Accept","application/json").header("Prefer","return=representation")
+         .header("x-geobr-version",ClientVersion).userAgent(std::string("GeoBR-Mod/")+ClientVersion).certVerification(true).followRedirects(false)
+-        .timeout(std::chrono::seconds{binary?60:15});
++        .timeout(asp::Duration::fromSecs(static_cast<long long>(binary?60:15)));
+     if (method!="GET"&&method!="DELETE") {
+         if (binary) request.header("Content-Type","application/octet-stream").body(std::move(bytes));
+         else request.header("Content-Type","application/json").bodyJSON(body);
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/services/GeoPassService.cpp b/src/services/GeoPassService.cpp
+--- a/src/services/GeoPassService.cpp	2026-11-19 19:00:00.005176260 +0000
++++ b/src/services/GeoPassService.cpp	2026-11-21 16:09:16.567726920 +0000
+@@ -12,7 +12,7 @@
+ #include <algorithm>
+ #include <ctime>
+ #define MORE_ICONS_EVENTS
+-#include <hiimjustin000.more_icons/include/MoreIcons.hpp>
++#include "../compat/MoreIconsOff.hpp"
+ using namespace geode::prelude;
+ namespace geobr {
+ namespace { void persistPassState(){if(auto result=Mod::get()->saveData();result.isErr())log::warn("GeoPass: local state could not be saved");} }
+@@ -164,7 +164,7 @@
+             gm->setGameVariable(receipt.c_str(),true);changed=true;
+         }
+         // Reward and receipt are committed together to GD's own save, so restarting does not repeat grants.
+-        if(changed){gm->save();Notification::create("Recompensas do GeoPass recebidas!",NotificationIcon::Success)->show();}
++        if(changed){gm->save(false);Notification::create("Recompensas do GeoPass recebidas!",NotificationIcon::Success)->show();}
+         if(rows.size()==100)rewardPage(offset+100);else m_syncing=false;
+     });
+ }
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/services/MainLevelLauncher.cpp b/src/services/MainLevelLauncher.cpp
+--- a/src/services/MainLevelLauncher.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/services/MainLevelLauncher.cpp	2026-11-21 16:09:16.569761636 +0000
+@@ -6,7 +6,7 @@
+ 
+ #include <Geode/binding/GJGameLevel.hpp>
+ #include <Geode/utils/file.hpp>
+-#include <hjfod.gmd-api/include/GMD.hpp>
++#include "../compat/LocalGmd.hpp"
+ 
+ #include <filesystem>
+ #include <fmt/format.h>
+@@ -20,7 +20,7 @@
+ std::filesystem::path cachePath(MainLevel const& level) {
+     auto extension = std::filesystem::path(level.gmdPath).extension().string();
+     if (extension != ".gmd" && extension != ".gmd2" && extension != ".lvl") extension = ".gmd";
+-    return Mod::get()->getSaveDir() / "main-level-cache" /
++    return geobr6::stdp(Mod::get()->getSaveDir()) / "main-level-cache" /
+         fmt::format("{}-v{}{}", level.id, level.fileVersion, extension);
+ }
+ 
+@@ -90,7 +90,7 @@
+     std::error_code directoryError;
+     std::filesystem::create_directories(path.parent_path(), directoryError);
+     if (directoryError) return fail("Nao foi possivel preparar o cache do level.");
+-    if (auto written = geode::utils::file::writeBinary(path, bytes); written.isErr()) {
++    if (auto written = geode::utils::file::writeBinary(geobr6::aspp(path), bytes); written.isErr()) {
+         return fail(fmt::format("Nao foi possivel salvar o .gmd: {}", written.unwrapErr()));
+     }
+ 
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/services/UpdateService.cpp b/src/services/UpdateService.cpp
+--- a/src/services/UpdateService.cpp	2026-11-19 19:57:19.306616142 +0000
++++ b/src/services/UpdateService.cpp	2026-11-21 16:09:16.471285285 +0000
+@@ -1,209 +1,9 @@
++// GD 2.2091 build: updates/latest.json lists the GD 2.2081 packages, and
++// installing one of those here would break the mod on this GD version, so the
++// updater does nothing in this build.
+ #include "UpdateService.hpp"
+-#include "../utils/Sha256.hpp"
+-
+-#include <Geode/Geode.hpp>
+-#include <Geode/utils/web.hpp>
+-
+-#include <filesystem>
+-#include <memory>
+-
+-using namespace geode::prelude;
+-using namespace geode::utils;
+ 
+ namespace geobr::update {
+-namespace {
+-
+-constexpr char const* RepoRaw = "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/";
+-constexpr char const* ManifestPath = "updates/latest.json";
+-
+-#if defined(GEODE_IS_WINDOWS)
+-constexpr char const* Platform = "win";
+-#elif defined(GEODE_IS_ANDROID64)
+-constexpr char const* Platform = "android64";
+-#elif defined(GEODE_IS_ANDROID32)
+-constexpr char const* Platform = "android32";
+-#elif defined(GEODE_IS_MACOS)
+-constexpr char const* Platform = "mac";
+-#else
+-constexpr char const* Platform = "ios";
+-#endif
+-
+-struct Package {
+-    std::string id, name, version, url, sha256;
+-    bool installed = false;
+-    std::string current;
+-};
+-
+-async::TaskHolder<web::WebResponse> s_manifest;
+-async::TaskHolder<web::WebResponse> s_download;
+-bool s_checked = false;
+-
+-// Other packages of the same mod in the mods folder (e.g. "geobr.geobrmod (1).geode"
+-// from a manual copy): Geode loads only one of them, maybe the old one.
+-void removeDuplicates(std::string const& id, std::filesystem::path const& keep) {
+-    std::error_code error;
+-    for (auto const& entry : std::filesystem::directory_iterator(dirs::getModsDir(), error)) {
+-        std::error_code e;
+-        if (!entry.is_regular_file(e) || entry.path().extension() != ".geode") continue;
+-        if (std::filesystem::equivalent(entry.path(), keep, e)) continue;
+-        auto metadata = ModMetadata::createFromGeodeFile(entry.path());
+-        if (metadata.getID() != id) continue;
+-        std::filesystem::remove(entry.path(), e);
+-        log::warn("Update: removed duplicate package {} ({})", entry.path().filename().string(), e ? e.message() : "ok");
+-    }
+-}
+-
+-// Android (Geode launcher, "patchless"): the game loads each mod's binary from
+-// the launcher's own folder, not from the .geode. Geode's own installer also
+-// puts the new binary in unzipped/binaries, which is taken over on the next
+-// start; this does exactly the same for a .geode the mod installed.
+-geode::Result<> stageBinary(std::filesystem::path const& geodePath) {
+-    if (!Loader::get()->isPatchless()) return geode::Ok();
+-    auto metadata = ModMetadata::createFromGeodeFile(geodePath);
+-    std::string binary(metadata.getBinaryName());
+-    if (binary.empty()) return geode::Err("pacote sem binario");
+-    GEODE_UNWRAP_INTO(auto unzip, file::Unzip::create(geodePath));
+-    if (!unzip.hasEntry(binary)) return geode::Err("binario " + binary + " nao esta no pacote");
+-    auto dir = dirs::getModRuntimeDir() / "binaries";
+-    (void)file::createDirectoryAll(dir);
+-    GEODE_UNWRAP(unzip.extractTo(binary, dir / binary));
+-    log::info("Update: binary {} staged for the next start", binary);
+-    return geode::Ok();
++void checkOnce() {}
++void repairStaleBinary(char const*) {}
+ }
+-
+-web::WebRequest request(int seconds) {
+-    web::WebRequest r;
+-    r.timeout(std::chrono::seconds{seconds}).certVerification(true).followRedirects(true);
+-    return r;
+-}
+-
+-// Only files from the release repository are ever installed.
+-bool trustedUrl(std::string const& url) { return url.rfind(RepoRaw, 0) == 0 && url.find("..") == std::string::npos; }
+-
+-std::vector<Package> newer(matjson::Value const& manifest) {
+-    std::vector<Package> out;
+-    auto packages = manifest["packages"].asArray();
+-    if (!packages) return out;
+-    for (auto const& p : packages.unwrap()) {
+-        Package pkg;
+-        pkg.id = p["id"].asString().unwrapOr("");
+-        pkg.name = p["name"].asString().unwrapOr(pkg.id);
+-        pkg.version = p["version"].asString().unwrapOr("");
+-        auto file = p["files"][Platform];
+-        pkg.url = file["url"].asString().unwrapOr("");
+-        pkg.sha256 = file["sha256"].asString().unwrapOr("");
+-        if ((pkg.id != "geobr.geobrmod" && pkg.id != "geobr.gdps") || pkg.url.empty() || pkg.sha256.size() != 64 || !trustedUrl(pkg.url)) continue;
+-        auto offered = VersionInfo::parse(pkg.version);
+-        if (!offered) continue;
+-        auto mod = Loader::get()->getInstalledMod(pkg.id);
+-        pkg.installed = mod != nullptr;
+-        if (mod) {
+-            pkg.current = mod->getVersion().toVString();
+-            if (!(offered.unwrap() > mod->getVersion())) continue;
+-        }
+-        out.push_back(std::move(pkg));
+-    }
+-    return out;
+-}
+-
+-void finish(int installed, std::string error) {
+-    if (!error.empty()) {
+-        FLAlertLayer::create("Atualizacao GeoBR", fmt::format("A atualizacao parou: {}\nNada foi alterado no pacote que falhou.", error), "OK")->show();
+-        if (installed == 0) return;
+-    }
+-    createQuickPopup("Atualizacao GeoBR", "Pronto! A nova versao entra quando o jogo reiniciar.", "Depois", "Reiniciar",
+-        [](auto, bool restart) { if (restart) game::restart(true); });
+-}
+-
+-void install(std::shared_ptr<std::vector<Package>> list, size_t index, int installed) {
+-    if (index >= list->size()) { finish(installed, {}); return; }
+-    auto const& pkg = (*list)[index];
+-    Notification::create(fmt::format("Baixando {} {}...", pkg.name, pkg.version), NotificationIcon::Loading, 2.f)->show();
+-    s_download.spawn("GeoBR - atualizacao", request(300).get(pkg.url), [list, index, installed](web::WebResponse response) {
+-        auto const& pkg = (*list)[index];
+-        if (!response.ok()) { finish(installed, fmt::format("{}: download falhou (HTTP {})", pkg.name, response.code())); return; }
+-        auto const& data = response.data();
+-        auto hash = sha256::hex(data.data(), data.size());
+-        if (hash != pkg.sha256) {
+-            log::error("Update {}: sha256 {} != {}", pkg.id, hash, pkg.sha256);
+-            finish(installed, fmt::format("{}: arquivo diferente do publicado (SHA-256)", pkg.name));
+-            return;
+-        }
+-        // Replace the package Geode actually loaded (its file name may differ).
+-        auto target = dirs::getModsDir() / (pkg.id + ".geode");
+-        if (auto mod = Loader::get()->getInstalledMod(pkg.id)) {
+-            auto loaded = mod->getPackagePath();
+-            std::error_code e;
+-            if (!loaded.empty() && loaded.parent_path() == dirs::getModsDir() && std::filesystem::exists(loaded, e)) target = loaded;
+-        }
+-        auto temp = dirs::getModsDir() / (pkg.id + ".geode.download");
+-        if (auto written = file::writeBinary(temp, data); !written) {
+-            finish(installed, fmt::format("{}: nao foi possivel gravar ({})", pkg.name, written.unwrapErr()));
+-            return;
+-        }
+-        std::error_code error;
+-        std::filesystem::rename(temp, target, error);
+-        if (error) {
+-            std::filesystem::remove(temp, error);
+-            finish(installed, fmt::format("{}: nao foi possivel substituir o pacote", pkg.name));
+-            return;
+-        }
+-        removeDuplicates(pkg.id, target);
+-        if (auto staged = stageBinary(target); !staged) {
+-            finish(installed, fmt::format("{}: pacote salvo, mas o binario nao foi preparado ({})", pkg.name, staged.unwrapErr()));
+-            return;
+-        }
+-        log::info("Update: installed {} {} ({})", pkg.id, pkg.version, hash);
+-        install(list, index + 1, installed + 1);
+-    });
+-}
+-
+-} // namespace
+-
+-void repairStaleBinary(char const* compiledVersion) {
+-    // A .geode newer than the binary that is running (an update installed by an
+-    // older updater on Android): stage this package's binary and ask for a
+-    // full restart, so the new version really loads.
+-    static bool done = false;
+-    if (done) return;
+-    done = true;
+-    removeDuplicates(Mod::get()->getID(), Mod::get()->getPackagePath());
+-    auto packaged = Mod::get()->getVersion().toVString();
+-    auto running = std::string("v") + compiledVersion;
+-    if (packaged == running || packaged == compiledVersion) return;
+-    log::warn("Update: package is {} but the running binary is {}", packaged, compiledVersion);
+-    if (auto staged = stageBinary(Mod::get()->getPackagePath()); !staged) {
+-        log::error("Update: could not stage binary: {}", staged.unwrapErr());
+-        return;
+-    }
+-    createQuickPopup("Atualizacao GeoBR",
+-        fmt::format("A GeoBR {} foi baixada, mas ainda esta rodando a {}.\nFeche o jogo por completo e abra de novo para terminar.", packaged, running),
+-        "Depois", "Reiniciar", [](auto, bool restart) { if (restart) game::restart(true); });
+-}
+-
+-void checkOnce() {
+-    if (s_checked) return;
+-    s_checked = true;
+-    s_manifest.spawn("GeoBR - procurar atualizacao", request(20).get(std::string(RepoRaw) + ManifestPath), [](web::WebResponse response) {
+-        if (!response.ok()) { log::info("Update check: HTTP {}", response.code()); return; }
+-        auto manifest = response.json();
+-        if (!manifest) return;
+-        auto list = std::make_shared<std::vector<Package>>(newer(manifest.unwrap()));
+-        if (list->empty()) return;
+-        std::string key;
+-        std::string lines;
+-        for (auto const& p : *list) {
+-            key += p.id + "@" + p.version + ";";
+-            lines += p.installed ? fmt::format("{}: {} -> {}\n", p.name, p.current, p.version) : fmt::format("{} {} (novo)\n", p.name, p.version);
+-        }
+-        if (Mod::get()->getSavedValue<std::string>("update-skipped") == key) return;
+-        auto notes = manifest.unwrap()["notes"].asString().unwrapOr("");
+-        createQuickPopup("Atualizacao GeoBR", fmt::format("{}{}\nBaixar e instalar agora?", lines, notes.empty() ? "" : "\n" + notes.substr(0, 300) + "\n"),
+-            "Agora nao", "Atualizar", [list, key](auto, bool yes) {
+-                if (!yes) { Mod::get()->setSavedValue("update-skipped", key); return; }
+-                install(list, 0, 0);
+-            });
+-    });
+-}
+-
+-} // namespace geobr::update
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/ui/AdminForm.cpp b/src/ui/AdminForm.cpp
+--- a/src/ui/AdminForm.cpp	2026-11-19 19:12:33.933703133 +0000
++++ b/src/ui/AdminForm.cpp	2026-11-21 16:10:20.706710732 +0000
+@@ -7,7 +7,7 @@
+ #include "../models/JsonModelUtils.hpp"
+ #include <Geode/binding/ButtonSprite.hpp>
+ #include <Geode/binding/GameManager.hpp>
+-#include <hjfod.gmd-api/include/GMD.hpp>
++#include "../compat/LocalGmd.hpp"
+ #include <charconv>
+ #include <ctime>
+ #include <random>
+@@ -96,7 +96,7 @@
+     m_picker.spawn("GeoBR - escolher Main Level",file::pick(file::PickMode::OpenFile,{{},{{"GDShare",{"*.gmd","*.gmd2","*.lvl"}}}}),[this](auto result){
+         if(result.isErr()){m_busy=false;status(fmt::format("Seletor nao abriu ({}). Use \"Meus levels\" ou \"Da pasta\".",result.unwrapErr()));return;}
+         if(!result.unwrap()){m_busy=false;status("Selecao cancelada.");return;}
+-        useFile(*result.unwrap());
++        useFile(geobr6::stdp(*result.unwrap()));
+     });
+ }
+ namespace {
+@@ -134,10 +134,10 @@
+     WeakRef<AdminForm> weak=this;
+     if(auto chooser=LocalLevelChooser::create([weak](GJGameLevel* level){
+         auto self=weak.lock();if(!self||!level)return;
+-        auto temp=Mod::get()->getSaveDir()/"main-level-export.gmd";
++        auto temp=geobr6::stdp(Mod::get()->getSaveDir())/"main-level-export.gmd";
+         auto exported=gmd::exportLevelAsGmd(level,temp,gmd::GmdFileType::Gmd);
+         if(exported.isErr()){self->status(fmt::format("Falha ao exportar: {}",exported.unwrapErr()));return;}
+-        auto bytes=file::readBinary(temp);std::error_code removeError;std::filesystem::remove(temp,removeError);
++        auto bytes=file::readBinary(geobr6::aspp(temp));std::error_code removeError;std::filesystem::remove(temp,removeError);
+         if(bytes.isErr()){self->status("Falha ao ler o level exportado.");return;}
+         if(bytes.unwrap().size()>GeoBRConfig::MaxGmdBytes){self->status("O level passa de 12 MB.");return;}
+         self->m_busy=true;self->uploadGmd(std::move(bytes).unwrap(),".gmd",std::string(level->m_levelName));
+@@ -146,16 +146,16 @@
+ // Newest .gmd / .gmd2 / .lvl in the mod's "levels" folder (phones where the picker does not open).
+ void AdminForm::onFolder(CCObject*){
+     if(m_busy)return;
+-    auto folder=Mod::get()->getConfigDir()/"levels";std::error_code error;std::filesystem::create_directories(folder,error);
++    auto folder=geobr6::stdp(Mod::get()->getConfigDir())/"levels";std::error_code error;std::filesystem::create_directories(folder,error);
+     std::filesystem::path newest;std::filesystem::file_time_type newestTime{};
+     for(auto const& entry:std::filesystem::directory_iterator(folder,error)){
+         std::error_code e;if(!entry.is_regular_file(e))continue;auto ext=entry.path().extension().string();
+         std::transform(ext.begin(),ext.end(),ext.begin(),[](unsigned char c){return static_cast<char>(std::tolower(c));});
+         if(ext!=".gmd"&&ext!=".gmd2"&&ext!=".lvl")continue;auto time=entry.last_write_time(e);if(newest.empty()||time>newestTime){newest=entry.path();newestTime=time;}
+     }
+-    auto where=utils::string::pathToString(folder);
++    auto where=geobr6::pathStr(folder);
+     if(newest.empty()){utils::clipboard::write(where);FLAlertLayer::create(nullptr,"Pasta de levels",fmt::format("Coloque o .gmd nesta pasta (caminho copiado) e toque em <cg>Da pasta</c> de novo:\n\n<cy>{}</c>",where),"OK",nullptr,400.f)->show();status("Nenhum .gmd na pasta de levels.");return;}
+-    m_busy=true;status("Lendo "+utils::string::pathToString(newest.filename())+"...");useFile(newest);
++    m_busy=true;status("Lendo "+geobr6::pathStr(newest.filename())+"...");useFile(newest);
+ }
+ void AdminForm::useFile(std::filesystem::path const& path){
+     {
+@@ -163,7 +163,7 @@
+         if(error||size==0||size>GeoBRConfig::MaxGmdBytes){m_busy=false;status("O arquivo deve ter dados e no maximo 12 MB.");return;}
+         auto imported=gmd::importGmdAsLevel(path);
+         if(imported.isErr()||!imported.unwrap()||imported.unwrap()->m_levelString.empty()){m_busy=false;status("Arquivo GDShare invalido ou level vazio.");return;}
+-        auto data=file::readBinary(path);if(data.isErr()){m_busy=false;status("Falha ao ler o arquivo.");return;}
++        auto data=file::readBinary(geobr6::aspp(path));if(data.isErr()){m_busy=false;status("Falha ao ler o arquivo.");return;}
+         auto extension=path.extension().string();if(extension!=".gmd"&&extension!=".gmd2"&&extension!=".lvl"){m_busy=false;status("Use .gmd, .gmd2 ou .lvl.");return;}
+         uploadGmd(std::move(data).unwrap(),extension,std::string(imported.unwrap()->m_levelName));
+     }
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/ui/CommunityTab.cpp b/src/ui/CommunityTab.cpp
+--- a/src/ui/CommunityTab.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/ui/CommunityTab.cpp	2026-11-21 16:10:20.713276085 +0000
+@@ -68,10 +68,9 @@
+     m_input->setPosition({inputWidth / 2.f + 6.f, 15.f});
+     m_input->setCommonFilter(CommonFilter::Any);
+     m_input->setMaxCharCount(GeoBRConfig::MaxMessageCodepoints);
+-    m_input->setTextAlign(TextInputAlign::Left);
++    m_input->setAlignment(Label::Alignment::Left);
+     m_input->setID("community-message-input");
+     m_input->setEnabled(true);
+-    m_input->getInputNode()->setTouchEnabled(true);
+     addChild(m_input, 8);
+ 
+     auto keyboardMenu = CCMenu::create();
+@@ -106,7 +105,6 @@
+ 
+ void CommunityTab::onKeyboard(CCObject*) {
+     m_input->setEnabled(true);
+-    m_input->getInputNode()->setTouchEnabled(true);
+     m_input->focus();
+     feedback("Teclado aberto. Digite sua mensagem.");
+ }
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/ui/GdpsAdminPopup.cpp b/src/ui/GdpsAdminPopup.cpp
+--- a/src/ui/GdpsAdminPopup.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/ui/GdpsAdminPopup.cpp	2026-11-21 16:10:20.714884213 +0000
+@@ -169,7 +169,7 @@
+     float width = many ? 82.f : 104.f;
+     m_search->setVisible(search);
+     m_search->setString("");
+-    m_search->setWidth(searchWidth);
++    m_search->setContentSize({searchWidth, m_search->getContentSize().height});
+     m_search->setPosition({18.f + searchWidth / 2.f, 220});
+     m_search->setPlaceholder(m_tab == Comments || m_tab == Board ? "ID do level" : "Nome ou ID");
+     float x = (search ? 30.f + searchWidth : 18.f) + width / 2.f;
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/ui/GdpsPopups.cpp b/src/ui/GdpsPopups.cpp
+--- a/src/ui/GdpsPopups.cpp	2026-11-19 18:51:19.189145301 +0000
++++ b/src/ui/GdpsPopups.cpp	2026-11-21 16:10:20.708755651 +0000
+@@ -302,7 +302,7 @@
+             m_action.post("password", matjson::makeObject({{"password", v[0]}}), [this](gdps::Result r) {
+                 if (!r.ok) { status(r.error); return; }
+                 if (auto am = GJAccountManager::sharedState()) am->m_GJP2 = jsonutil::stringOr(r.value, "gjp2");
+-                GameManager::sharedState()->save();
++                GameManager::sharedState()->save(false);
+                 status("Senha trocada.");
+             });
+         });
+@@ -322,7 +322,7 @@
+                 auto name = jsonutil::stringOr(r.value, "username");
+                 if (auto am = GJAccountManager::sharedState()) am->m_username = name;
+                 GameManager::sharedState()->m_playerName = name;
+-                GameManager::sharedState()->save();
++                GameManager::sharedState()->save(false);
+                 status("Nome trocado para " + name + ".");
+                 gdps::refreshMe();
+             });
+@@ -477,11 +477,11 @@
+             return;
+         }
+         if (!result.unwrap()) { m_busy = false; status("Envio cancelado."); return; }
+-        sendFile(*result.unwrap(), name, artist);
++        sendFile(geobr6::stdp(*result.unwrap()), name, artist);
+     });
+ }
+ 
+-std::filesystem::path MusicLibraryPopup::musicFolder() { return Mod::get()->getConfigDir() / "musicas"; }
++std::filesystem::path MusicLibraryPopup::musicFolder() { return geobr6::stdp(Mod::get()->getConfigDir()) / "musicas"; }
+ 
+ // Without the system file picker (some phones / launchers): the newest MP3 in
+ // the mod's "musicas" folder (on Android it is inside Android/media, reachable
+@@ -501,7 +501,7 @@
+         auto time = entry.last_write_time(e);
+         if (newest.empty() || time > newestTime) { newest = entry.path(); newestTime = time; }
+     }
+-    auto where = utils::string::pathToString(folder);
++    auto where = geobr6::pathStr(folder);
+     if (newest.empty()) {
+         utils::clipboard::write(where);
+         FLAlertLayer::create(nullptr, "Pasta de musicas",
+@@ -509,7 +509,7 @@
+         status("Nenhum MP3 na pasta de musicas.");
+         return;
+     }
+-    auto file = utils::string::pathToString(newest.filename());
++    auto file = geobr6::pathStr(newest.filename());
+     WeakRef<MusicLibraryPopup> weak = this;
+     createQuickPopup("Enviar MP3", fmt::format("Enviar <cy>{}</c> como <cg>{}</c> - {}?", file, name, artist), "Cancelar", "Enviar",
+         [weak, newest, name, artist](auto, bool send) {
+@@ -525,7 +525,7 @@
+         std::error_code error;
+         auto size = std::filesystem::file_size(path, error);
+         if (error || size < 1024 || size > 15u * 1024 * 1024) { m_busy = false; status("O MP3 precisa ter entre 1 KB e 15 MB."); return; }
+-        auto bytes = file::readBinary(path);
++        auto bytes = file::readBinary(geobr6::aspp(path));
+         if (bytes.isErr()) { m_busy = false; status("Falha ao ler o arquivo."); return; }
+         auto data = std::move(bytes).unwrap();
+         status("Preparando envio...");
+@@ -535,7 +535,7 @@
+             auto url = jsonutil::stringOr(r.value, "uploadUrl");
+             status(fmt::format("Enviando musica {}...", id));
+             WebRequest put;
+-            put.header("Content-Type", "audio/mpeg").timeout(std::chrono::seconds{180}).certVerification(true).followRedirects(false);
++            put.header("Content-Type", "audio/mpeg").timeout(asp::Duration::fromSecs(static_cast<long long>(180))).certVerification(true).followRedirects(false);
+             put.body(std::move(data));
+             m_put.spawn("GeoBR - enviar MP3", put.send("PUT", url), [this, id](WebResponse response) {
+                 if (!response.ok()) { m_busy = false; status(fmt::format("Falha no envio (HTTP {}).", response.code())); return; }
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/ui/GeoBRMainLevelsLayer.cpp b/src/ui/GeoBRMainLevelsLayer.cpp
+--- a/src/ui/GeoBRMainLevelsLayer.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/ui/GeoBRMainLevelsLayer.cpp	2026-11-21 16:10:20.711152242 +0000
+@@ -168,7 +168,7 @@
+         return;
+     }
+ 
+-    if(auto local=MainLevelLauncher::cached(level);local){CCDirector::sharedDirector()->replaceScene(CCTransitionFade::create(.3f,PlayLayer::scene(local.level,false,false)));return;}
++    if(auto local=MainLevelLauncher::cached(level);local){CCDirector::sharedDirector()->replaceScene(CCTransitionFade::create(.3f,PlayLayer::scene(local.level,false)));return;}
+     m_launching = true;
+     showDownloadOverlay();
+     m_downloadRequest.spawn("GeoBR - baixar main level", MainLevelLauncher::download(level), [this, level](auto response) {
+@@ -181,7 +181,7 @@
+             return;
+         }
+         CCDirector::sharedDirector()->replaceScene(
+-            CCTransitionFade::create(.45f, PlayLayer::scene(imported.level, false, false))
++            CCTransitionFade::create(.45f, PlayLayer::scene(imported.level, false))
+         );
+     });
+ }
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/ui/GeoBRVisuals.cpp b/src/ui/GeoBRVisuals.cpp
+--- a/src/ui/GeoBRVisuals.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/ui/GeoBRVisuals.cpp	2026-11-21 16:06:24.193574792 +0000
+@@ -9,7 +9,7 @@
+ #include <random>
+ #include <string_view>
+ #define MORE_ICONS_EVENTS
+-#include <hiimjustin000.more_icons/include/MoreIcons.hpp>
++#include "../compat/MoreIconsOff.hpp"
+ using namespace geode::prelude;
+ namespace geobr::visual {
+ void fitPopup(CCNode* layer,CCSize design){auto win=CCDirector::sharedDirector()->getWinSize();float factor=Mod::get()->getSettingValue<int64_t>("ui-density")==0?.78f:.88f;layer->setScale(std::min({1.f,win.width*.90f/design.width,win.height*factor/design.height}));}
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/ui/GeoPlayersPopup.cpp b/src/ui/GeoPlayersPopup.cpp
+--- a/src/ui/GeoPlayersPopup.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/ui/GeoPlayersPopup.cpp	2026-11-21 16:10:20.716623416 +0000
+@@ -21,7 +21,7 @@
+  m_status=ui::makeLabel("","chatFont.fnt",.42f,{180,222,248});m_status->setPosition({275,15});m_mainLayer->addChild(m_status,4);
+  fetch();return true;
+ }
+-void GeoPlayersPopup::onSearch(CCObject*){m_page=0;m_input->defocus();fetch();}
++void GeoPlayersPopup::onSearch(CCObject*){m_page=0;m_input->unfocus();fetch();}
+ void GeoPlayersPopup::onPage(CCObject* s){if(m_busy)return;m_page=std::max(0,m_page+s->getTag());fetch();}
+ void GeoPlayersPopup::fetch(){
+  m_busy=true;m_status->setString("Carregando jogadores...");render();
+diff -ruN -x .git -x dist -x dist2209 -x 'build*' -x updates -x '_6_*' -x __pycache__ a/src/ui/SocialPopups.cpp b/src/ui/SocialPopups.cpp
+--- a/src/ui/SocialPopups.cpp	2026-11-15 14:34:57.000000000 +0000
++++ b/src/ui/SocialPopups.cpp	2026-11-21 16:10:20.716946160 +0000
+@@ -353,7 +353,7 @@
+     return true;
+ }
+ 
+-void PlayerPickerPopup::onSearch(CCObject*) { m_page = 0; m_input->defocus(); fetch(); }
++void PlayerPickerPopup::onSearch(CCObject*) { m_page = 0; m_input->unfocus(); fetch(); }
+ void PlayerPickerPopup::onPage(CCObject* s) { if (!m_busy) { m_page = std::max(0, m_page + s->getTag()); fetch(); } }
+ 
+ void PlayerPickerPopup::fetch() {

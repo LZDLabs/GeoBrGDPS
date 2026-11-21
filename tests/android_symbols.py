@@ -20,6 +20,8 @@ needed=['PlayerObject::pushButton(','PlayerObject::releaseButton(','PlayerObject
  'GManager::save(','GameObject::createWithKey(','GameObject::getSaveString(','ObjectToolbox::intKeyToFrame(','ObjectToolbox::sharedState(',
  # RC8: God Editor end-animation guards
  'PlayLayer::playEndAnimationToPos(','PlayLayer::playPlatformerEndAnimationToPos(',
+ # 1.16.0: GeoBR Natal 2026 (accessories on icons, garage, event hub)
+ 'GJGarageLayer::init(','GameManager::colorForIdx(','SimplePlayer::setSecondColor(','SimplePlayer::create(',
  # 1.15.0: collab level settings, online status, follow mission, level transfer
  'LevelSettingsLayer::init(','LevelEditorLayer::levelSettingsUpdated(','GameLevelManager::isFollowingUser(','EditLevelLayer::init(','cocos2d::CCDrawNode::drawDot(',
  # 1.14.4: collab deletes like the player (select + delete)

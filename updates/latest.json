@@ -1,19 +1,19 @@
 {
   "format": 1,
-  "notes": "1.15.3: atualizacao automatica mais confiavel (Android e copias duplicadas); collab com todas as configuracoes ao vivo, status online, missoes sociais, notificacoes, levar level do GD normal pro GDPS.",
+  "notes": "1.16.8: GeoBR Natal 2026 - Hub de Natal (Candy, roleta, calendario de 1 a 25/12, caixas, acessorios, temas e molduras), Batalha Natalina toda hora (quem passar a fase primeiro ganha, espectar, BattleGuard), passe de Natal e ranking de Candy. Evento abre em 1/12.",
   "packages": [
     {
       "id": "geobr.geobrmod",
       "name": "GeoBR",
-      "version": "1.15.3",
+      "version": "1.16.8",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "a2a5d57ddee433fc2d99afaaf753a4f311b3a7be5f97321f3b426b4eb1a61620"
+          "sha256": "74715183ed3545565bffed1125f62079bc9cfd2c58b62be6aa730eb5cf3c6a76"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "a2a5d57ddee433fc2d99afaaf753a4f311b3a7be5f97321f3b426b4eb1a61620"
+          "sha256": "74715183ed3545565bffed1125f62079bc9cfd2c58b62be6aa730eb5cf3c6a76"
         }
       }
     },

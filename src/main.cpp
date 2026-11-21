@@ -1,3 +1,4 @@
+#include "natal/NatalService.hpp"
 #include "services/PresenceService.hpp"
 #include "ui/GeoBRHubLayer.hpp"
 #include "services/AccessService.hpp"
@@ -20,6 +21,7 @@ $on_mod(Loaded){
   return;
  }
  geobr::registerGeoBRRobotPack();
+ geobr::natal::applyTexturePack();
 }
 class $modify(GeoBRMenuLayer,MenuLayer){
  bool init(){

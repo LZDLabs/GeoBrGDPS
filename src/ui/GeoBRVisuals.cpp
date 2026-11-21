@@ -14,7 +14,8 @@ using namespace geode::prelude;
 namespace geobr::visual {
 void fitPopup(CCNode* layer,CCSize design){auto win=CCDirector::sharedDirector()->getWinSize();float factor=Mod::get()->getSettingValue<int64_t>("ui-density")==0?.78f:.88f;layer->setScale(std::min({1.f,win.width*.90f/design.width,win.height*factor/design.height}));}
 bool hasThemeArt(std::string const& s){
- static const std::array<std::string_view,10> Styles{"fire","ice","forest","cosmos","neon","gold","aurora","eclipse","royal","astral"};
+ static const std::array<std::string_view,14> Styles{"fire","ice","forest","cosmos","neon","gold","aurora","eclipse","royal","astral",
+  "natal_noite","natal_floresta","natal_bengala","natal_lareira"};
  return std::ranges::find(Styles,s)!=Styles.end();
 }
 void stylePopup(CCNode* mainLayer,CCNode* nativeBackground,CCSize size,ccColor3B color){
@@ -30,6 +31,11 @@ void stylePopup(CCNode* mainLayer,CCNode* nativeBackground,CCSize size,ccColor3B
  gradient->setContentSize({size.width-8,size.height-8});gradient->setPosition({4,4});frame->addChild(gradient,-5);
 }
 Palette palette(std::string const& s){
+ // GeoBR Natal 2026 profile themes.
+ if(s=="natal_noite")return {{52,40,96},{12,18,50},{255,224,120}};
+ if(s=="natal_floresta")return {{14,92,70},{8,30,40},{150,255,200}};
+ if(s=="natal_bengala")return {{205,28,44},{110,10,24},{255,255,255}};
+ if(s=="natal_lareira")return {{122,50,38},{40,16,14},{255,190,90}};
  if(s=="aurora")return {{13,94,110},{13,15,51},{99,255,205}};
  if(s=="eclipse")return {{105,23,48},{13,9,26},{255,132,112}};
  if(s=="royal")return {{74,25,120},{16,13,42},{255,215,111}};

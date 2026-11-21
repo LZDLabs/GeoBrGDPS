@@ -11,6 +11,79 @@ São **dois arquivos**, instalados pelo Geode:
 
 > **Correção 1.0.1 do GeoBR GDPS:** a versão 1.0.0 não carregava no aparelho (`library "hjfod.gmd-api.android64.so" not found`). O script de build ligava nela, sem necessidade, uma biblioteca do mod principal. A 1.0.1 só usa o Geode e as bibliotecas do sistema. Um teste novo (`tests/elf_needed.py`) lê as bibliotecas exigidas pelo `.so` e falha se houver alguma de um mod que não está nas dependências.
 
+## 1.16.4 (21/11) — Natal: mini games refeitos com triggers, temas e molduras de perfil (em teste, NÃO publicada)
+
+- **Mini games** (gerados por `tools/design_natal_minigames.py`, com IDs e campos dos triggers conferidos na documentação do GD e em níveis reais):
+  - **Corrida do Treno**: pegue os 3 presentes, com contador na tela. O portão de gelo só abre com os 3 (pickup e count). O trenó cruza o fosso de espinhos e começa a andar quando você pega o 1º presente.
+  - **Torre de Presentes**: subida com pads, orbs, espinhos no teto e um elevador que liga quando você pisa nele. A estrela do topo termina a fase.
+  - **Fábrica do Noel**: 3 alavancas abrem 3 portas (toggle por toque), engrenagens, um trecho com gravidade invertida e a entrega no final.
+  - Visual: o chão sólido é invisível (chave 135) e tudo o que aparece é arte em pixel colorida (objeto 211): neve, presentes com fita, chaminés de tijolo, árvores, bengalas, boneco de neve, casinhas, lua, estrelas e pisca-pisca.
+- **Temas de perfil de Natal**: Noite Feliz, Floresta Nevada, Bengala Doce e Lareira Quentinha.
+- **Molduras de perfil**: Chifres de Rena (em cima do perfil), Neve, Pisca-Pisca, Bengala e Guirlanda.
+  - Vêm do Passe (Neve, Noite Feliz, Pisca-Pisca, Floresta Nevada e Chifres de Rena) ou da compra com Candy.
+  - Equipe em Natal > Acessórios > Temas/Molduras, com prévia do card.
+  - Aparecem no perfil para todo mundo e continuam valendo depois do evento.
+- **Acessórios na fase**:
+  - Na nave, no jetpack e no UFO, o acessório vai no iconezinho de dentro e inclina com ele.
+  - Na wave e no swing, onde não aparece ícone, ele some.
+  - Tem uma mola na rotação.
+  - O cachecol enrola no ícone: a ponta fica atrás e a faixa na frente.
+- **Garagem (icon kit)**: botão com gorro para escolher seus acessórios, que também funciona depois do evento.
+- **Roleta**: brilho, a fatia do dia contornada em dourado, ponteiro batendo nos pinos enquanto gira e confete quando para.
+- **Servidor**: migração `20261121150000_geobr_natal_cosmetics.sql`, testada localmente; no Supabase as funções são idênticas às testadas.
+
+## 1.16.3 (21/11) — Natal: roleta de verdade, passe novo, Loja de Doces (em teste, NÃO publicada)
+
+- **Roleta**: roda de verdade, com fatias vermelhas, verdes e brancas, aro dourado com luzinhas piscando, centro e ponteiro fixo. Gira devagar enquanto espera e, ao girar, dá 5 voltas e para no prêmio.
+- **Passe de Natal** (um só, sem passe pago):
+  - Cartas de prêmio numa trilha numerada, com barra dourada até o seu Candy.
+  - Cada carta mostra cadeado (bloqueado), "PEGAR!" pulsando (liberado) ou um certo (já pego).
+  - O passe abre na página em que você está.
+- **Loja de Doces** (aba "Loja"): 4 acessórios por dia, os mesmos para todos, renovando à meia-noite com contador. Comprados com Candy, com preço por raridade. As caixas surpresa ficam embaixo.
+- **Acessórios**:
+  - Todos aparecem coloridos; os que você não tem ficam com cadeado.
+  - Tocar num bloqueado mostra uma prévia no seu ícone e de onde ele vem.
+  - Na fase, o acessório não gira mais duro junto com o cubo: fica em pé e inclina um pouco no pulo.
+- **Menu do Dono** em 4 páginas (Evento, Batalha, Jogadores, Fases), sem campos encavalados.
+  - "Liberar TODOS os acessórios", para você (campo vazio) ou para um jogador.
+  - Página Fases: copiar cada minigame (ou os 3) para Criar > Meus levels.
+- **Menu principal**: neve só nos 3 botões grandes, mais fina e em cima da borda, sem cobrir os ícones. Os botões pequenos ficam sem neve.
+- **Servidor**: migração `20261121120000_geobr_natal_shop.sql`, testada localmente. No Supabase, as funções são idênticas às testadas.
+
+## 1.16.2 (20/11) — Natal: menus de Natal de verdade, aba Evento com contador (em teste, NÃO publicada)
+
+- **Menus do GDPS com tema de Natal** (só com o evento aberto para você; editor e gameplay não mudam):
+  - Menu principal com céu vermelho e chão de neve. Neve encaixada em cada botão: só no braço de cima das cruzes, arredondada nos botões redondos e reta nos retangulares. Gorro no "G" do título.
+  - Moldura listrada de bengala, pisca-pisca no topo e neve caindo em 3 camadas, com brilhos piscando no chão.
+  - Criar e Ranking em vermelho; listas e busca de levels em verde.
+  - Hub GeoBR em vermelho, com azevinho nos cards, presentes, boneco de gengibre, bengala e boneco de neve nos cantos.
+  - Arte nova e original em `tools/design_natal_menu_art.py`.
+- **Aba Evento** (antes "Fases"):
+  - Mostra a fase do evento da vez e o contador "Próximo evento em …". As fases trocam sozinhas a cada X horas (o Dono escolhe: 1, 2, 3, 6, 12, 24, 48, 72 ou 168 h).
+  - Antes do evento abrir, mostra quanto falta para 01/12.
+  - Os Mini Games ficam sempre abertos.
+  - O Candy da fase do evento só vale enquanto ela é a da vez, com 30 min de tolerância.
+- **Menu do Dono**: troca da fase (horas) e o botão "Minigames > Meus levels", que coloca os 3 minigames em Criar > Meus levels para você revisar.
+- **Servidor**:
+  - O Supabase recebeu o Natal completo: tabelas, funções, Batalha Natalina e Menu do Dono. Conferi que as 43 funções são idênticas às testadas localmente.
+  - O evento continua desligado para os jogadores; só a staff vê, em modo teste.
+  - Sem `delete`: quem sai do lobby fica marcado como inativo.
+
+## 1.16.1 (20/11) — Natal: hub GeoBR, Batalha Natalina com lobby e bots, menus de Natal (em teste, NÃO publicada)
+
+- O Natal agora abre pelo card **Natal** no hub GeoBR (Criar > seta > GeoBR), ao lado de Main Levels, Passe, Loja e Mapa. O botão de bengala do menu principal saiu.
+- Logo do Natal não cobre mais as abas. A aba Início mostra se o evento está aberto, fechado (com a data) ou em MODO TESTE.
+- **Batalha Natalina** (não usa mais código): o Dono abre no Menu do Dono; aparece o botão ENTRAR para todos; espera de 3 min (configurável) com votação do mapa; depois todos jogam o mesmo mapa ao mesmo tempo, com placar ao vivo, BattleGuard e Candy para o top 3. O Dono pode ligar **bots** (até 8) que jogam sozinhos para testar.
+- **Menu do Dono** reorganizado em 3 blocos: Evento (ligar para todos, modo teste da staff, dia simulado de dezembro), Batalha Natalina (bots, abrir, começar agora, cancelar/encerrar) e Jogadores (ver, dar Candy, suspender, liberar) + atalho para as fases do evento.
+- **Modo teste**: a staff (Dono/Admin com permissão de eventos) usa o evento antes de abrir para todos; "dia de teste" simula o dia do calendário/roleta.
+- **Menus de Natal no GDPS** (só quando o evento está aberto para você): neve caindo, pisca-pisca no topo, neve em cima dos botões do menu, gorro de Papai Noel no título e neve no chão do menu. Também neve/luzes no Criar/hub GeoBR, nas fases principais e neve na garagem. Editor e gameplay não mudam. Arte original (`tools/design_natal_menu_art.py`).
+- Servidor: migração `20261120140000_geobr_natal_arena.sql` (testada localmente).
+- Os 3 mini games foram enviados para a conta Luiz (não listados, cópia livre, IDs 44, 45 e 46) para revisão.
+
+## 1.16.0 (20/11) — GeoBR Natal 2026 (em teste, NÃO publicada)
+
+- Evento GeoBR Natal 2026: Candy, roleta diária, calendário até 25/12, caixas e 45 acessórios de ícone (arte do evento), Passe de Natal, fases do evento escolhidas pelo dono (Painel ADM → Natal), 3 mini games de plataforma, Batalha Natalina multiplayer com BattleGuard, Menu do Dono e decoração natalina só no GDPS. Detalhes, testes e limitações: `natal/README-NATAL-2026.md`. Migração: `20261120120000_geobr_natal_2026.sql` (não aplicada).
+
 ## 1.15.3 (19/11)
 
 - Atualização automática: grava por cima do pacote que o Geode realmente carregou (o nome do arquivo pode ser outro, ex. `geobr.geobrmod (1).geode` de uma cópia manual) e apaga outras cópias do mesmo mod na pasta de mods. Com duas cópias, o Geode carregava só uma (podia ser a antiga) e a atualização "não pegava". Ao abrir o jogo, cópias duplicadas também são removidas.

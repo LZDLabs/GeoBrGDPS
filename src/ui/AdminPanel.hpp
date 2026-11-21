@@ -4,7 +4,7 @@
 #include <Geode/ui/TextInput.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 namespace geobr {
-enum class AdminEntity { News, Announcements, Seasons, Rewards, Quests, MainLevels, Shop, Ranks, Links };
+enum class AdminEntity { News, Announcements, Seasons, Rewards, Quests, MainLevels, Shop, Ranks, Links, NatalLevels };
 std::string adminTable(AdminEntity);std::string adminTitle(AdminEntity);
 class AdminLogin final:public geode::Popup {
     geode::TextInput* m_password=nullptr;cocos2d::CCLabelBMFont* m_status=nullptr;CCMenuItemSpriteExtra* m_submit=nullptr;
