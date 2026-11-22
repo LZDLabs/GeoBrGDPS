@@ -1,19 +1,19 @@
 {
   "format": 1,
-  "notes": "1.16.8: GeoBR Natal 2026 - Hub de Natal (Candy, roleta, calendario de 1 a 25/12, caixas, acessorios, temas e molduras), Batalha Natalina toda hora (quem passar a fase primeiro ganha, espectar, BattleGuard), passe de Natal e ranking de Candy. Evento abre em 1/12.",
+  "notes": "1.16.9: codigo da Collab nao corta mais o ultimo caractere (digitando ou colando). Inclui o GeoBR Natal 2026 (1.16.8).",
   "packages": [
     {
       "id": "geobr.geobrmod",
       "name": "GeoBR",
-      "version": "1.16.8",
+      "version": "1.16.9",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "74715183ed3545565bffed1125f62079bc9cfd2c58b62be6aa730eb5cf3c6a76"
+          "sha256": "7035eb7e00106a151fa41573eb901bc36da97cb3319ebe14f33fe76a0934e9b7"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "74715183ed3545565bffed1125f62079bc9cfd2c58b62be6aa730eb5cf3c6a76"
+          "sha256": "7035eb7e00106a151fa41573eb901bc36da97cb3319ebe14f33fe76a0934e9b7"
         }
       }
     },

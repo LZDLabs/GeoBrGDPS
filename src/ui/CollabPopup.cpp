@@ -68,8 +68,11 @@ bool CollabPopup::init() {
     m_status->setPosition({Size.width / 2, 13});
     m_mainLayer->addChild(m_status, 5);
     m_code = TextInput::create(170, "Codigo (8)", "bigFont.fnt");
-    m_code->setMaxCharCount(8);
-    m_code->setCommonFilter(CommonFilter::Alphanumeric);
+    // Room for spaces/dashes and the keyboard's extra input: a field limited to
+    // exactly 8 cut the last character on Android (typing and pasting). The code
+    // is cleaned up when joining (letters/numbers only, upper case).
+    m_code->setMaxCharCount(20);
+    m_code->setCommonFilter(CommonFilter::Any);
     m_code->setPosition({120, 44});
     m_mainLayer->addChild(m_code, 4);
     m_title = TextInput::create(260, "Nome da sala", "chatFont.fnt");
@@ -252,6 +255,7 @@ void CollabPopup::onJoin(CCObject*) {
     // Accepts "abcd efgh", "ABCD-EFGH" or a pasted code with spaces.
     std::string code;
     for (unsigned char c : std::string(m_code->getString())) if (std::isalnum(c)) code += static_cast<char>(std::toupper(c));
+    if (code.size() > 8) code = code.substr(code.size() - 8);   // pasted with something before it ("Codigo: ...")
     if (code.size() != 8) { setStatus(m_status, fmt::format("O codigo tem 8 letras/numeros (voce digitou {}).", code.size())); return; }
     if (!startAction(m_joining, m_joinSince, "Entrando na sala...")) return;
     log::info("Collab: joining room with code {}", code);
