@@ -1,0 +1,65 @@
+# Keeps one Discord message with the latest GeoBR files.
+# Every time updates/latest.json changes (a new version), the message posted by
+# the Discord webhook is edited: new text and the two .geode files replaced.
+# The first run posts the message and stores its id in updates/discord-message-id.txt.
+#
+# Setup (once): Discord > channel > Edit Channel > Integrations > Webhooks >
+# New Webhook > Copy URL, then GitHub > Settings > Secrets and variables >
+# Actions > New repository secret: DISCORD_WEBHOOK_URL = that URL.
+# Then Actions > "Discord - arquivo atualizado" > Run workflow (or wait for the next version).
+name: Discord - arquivo atualizado
+
+on:
+  push:
+    branches: [main]
+    paths: ['updates/latest.json']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: discord-release
+  cancel-in-progress: false
+
+jobs:
+  discord:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Post or update the Discord message
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK}" ]; then
+            echo "::warning::Configure o secret DISCORD_WEBHOOK_URL (Settings > Secrets and variables > Actions)."
+            exit 0
+          fi
+          mod=$(jq -r '.packages[] | select(.id=="geobr.geobrmod") | .version' updates/latest.json)
+          gdps=$(jq -r '.packages[] | select(.id=="geobr.gdps") | .version' updates/latest.json)
+          notes=$(jq -r '.notes // ""' updates/latest.json)
+          content=$(printf '**GeoBR %s** + **GeoBR GDPS %s**\n%s\n\nBaixe os dois arquivos abaixo e coloque na pasta `mods` do Geode (GD 2.2081).\nQuem ja tem o GeoBR recebe a atualizacao sozinho no jogo.' "$mod" "$gdps" "$notes" | head -c 1900)
+          payload=$(jq -n --arg c "$content" '{content: $c, attachments: [{id: 0, filename: "geobr.geobrmod.geode"}, {id: 1, filename: "geobr.gdps.geode"}]}')
+          files=(-F "files[0]=@updates/geobr.geobrmod.geode;filename=geobr.geobrmod.geode" -F "files[1]=@updates/geobr.gdps.geode;filename=geobr.gdps.geode")
+          idfile=updates/discord-message-id.txt
+
+          # Edit the message from before (its files are replaced by the new ones).
+          if [ -s "$idfile" ]; then
+            id=$(tr -dc '0-9' < "$idfile")
+            code=$(curl -sS -o resp.json -w '%{http_code}' -X PATCH "${WEBHOOK}/messages/${id}" --form-string "payload_json=${payload}" "${files[@]}")
+            if [ "$code" = "200" ]; then echo "Mensagem ${id} atualizada para GeoBR ${mod}"; exit 0; fi
+            echo "Nao deu para editar a mensagem ${id} (HTTP ${code}); postando uma nova."
+            cat resp.json || true
+          fi
+
+          # First time (or the old message was deleted): post and remember its id.
+          code=$(curl -sS -o resp.json -w '%{http_code}' -X POST "${WEBHOOK}?wait=true" --form-string "payload_json=${payload}" "${files[@]}")
+          if [ "$code" != "200" ]; then echo "Discord respondeu HTTP ${code}"; cat resp.json; exit 1; fi
+          jq -r .id resp.json > "$idfile"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$idfile"
+          git commit -m "Discord: id da mensagem com os arquivos"
+          git push
