@@ -73,6 +73,7 @@ add_library(${PROJECT_NAME} SHARED
     src/collab/CollabHooks.cpp
     src/collab/CollabLive.cpp
     src/ui/CollabPopup.cpp
+    src/ui/CollabRoomPopup.cpp
     src/ui/SocialPopups.cpp
     src/gdps/GdpsService.cpp
     src/gdps/GdpsHooks.cpp

@@ -3,9 +3,11 @@
 // object carries a room-wide id; about once per second the editor sends its
 // added / changed / deleted objects, receives everyone else's and applies them
 // in place, and shows each member's name where they are looking in the level.
+#include <cstddef>
 #include <string>
 
 class EditorUI;
+class LevelEditorLayer;
 
 namespace geobr::collab {
 
@@ -17,5 +19,18 @@ void uploadPendingTrace();
 
 /** Whether this account may save / publish the room's level (owner or ADM). */
 bool canSaveRoom(std::string const& room);
+
+/** This account in the room, from the live session: 3 host, 2 ADM, 1 editor, 0 out / unknown. */
+int roomRank(std::string const& room);
+
+/** This editor reloads the room's objects from the server. */
+void reloadRoom(EditorUI* ui);
+
+/** Yellow teleport portals without their blue portal (copies of the old collab loop). */
+size_t countLooseYellowPortals(LevelEditorLayer* editor);
+size_t deleteLooseYellowPortals(LevelEditorLayer* editor);
+
+/** Any editor: a button to delete those yellow portals while there are any. */
+void startYellowWatch(EditorUI* ui);
 
 } // namespace geobr::collab

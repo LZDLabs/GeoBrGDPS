@@ -1,4 +1,5 @@
 #include "SocialPopups.hpp"
+#include "CollabRoomPopup.hpp"
 #include "DirectMessagesPopup.hpp"
 #include "GeoBRVisuals.hpp"
 #include "UIHelpers.hpp"
@@ -128,6 +129,18 @@ void ChatPopup::render() {
     for (auto const& row : rows) {
         bool mine = jsonutil::stringOr(row, "user_id") == CloudService::userID();
         auto body = jsonutil::stringOr(row, "body");
+        if (jsonutil::stringOr(row, "kind") == "system") {
+            auto line = CCNode::create();
+            line->setContentSize({424, 20});
+            line->setAnchorPoint({.5f, .5f});
+            auto stamp = jsonutil::stringOr(row, "created_at");
+            auto text = ui::makeLabel((stamp.size() > 15 ? stamp.substr(11, 5) + "  " : std::string()) + body, "chatFont.fnt", .45f, {130, 235, 160});
+            text->setPosition({212, 10});
+            text->limitLabelWidth(410, .45f, .25f);
+            line->addChild(text);
+            m_list->m_contentLayer->addChild(line);
+            continue;
+        }
         float height = body.size() > 70 ? 70.f : 52.f;
         auto node = CCNode::create();
         node->setContentSize({424, height});
@@ -211,8 +224,11 @@ void MembersPopup::fetch() {
         if (!r.success) { setStatus(m_status, r.error, 390); return; }
         m_rows = r.value;
         m_owner = false;
+        m_rank = 1;
         for (auto const& m : arrayOrEmpty(m_rows).asArray().unwrap()) {
-            if (jsonutil::stringOr(m, "user_id") == CloudService::userID() && jsonutil::stringOr(m, "role") == "owner") m_owner = true;
+            if (jsonutil::stringOr(m, "user_id") != CloudService::userID()) continue;
+            if (jsonutil::stringOr(m, "role") == "owner") m_owner = true;
+            m_rank = m_owner ? 3 : jsonutil::boolOr(m, "can_save", false) ? 2 : 1;
         }
         render();
     });
@@ -236,16 +252,19 @@ void MembersPopup::render() {
         auto role = jsonutil::stringOr(m, "role");
         bool admin = jsonutil::boolOr(m, "can_save", false);
         auto subtitle = role == "owner" ? std::string("Host") : role == "viewer" ? std::string("So ver") : group ? std::string("Membro") : admin ? std::string("ADM (salva)") : std::string("Editor");
+        if (!group && jsonutil::boolOr(m, "muted", false)) subtitle += " (silenciado)";
+        // Collab: the host and the ADMs moderate whoever ranks below them.
+        int theirs = role == "owner" ? 3 : admin ? 2 : 1;
+        bool moderate = !group && m_rank >= 2 && m_rank > theirs && jsonutil::stringOr(m, "user_id") != CloudService::userID();
         auto row = playerRow(m, 300, fmt::format("{}  |  Nv. {}", subtitle, levelOf(m)), this, menu_selector(MembersPopup::onPlayer));
         row->setTag(static_cast<int>(index));
-        row->setPosition({m_owner ? 180.f : 210.f, 225.f - i * 50});
+        row->setPosition({(group ? m_owner : moderate || m_rank >= 2) ? 180.f : 210.f, 225.f - i * 50});
         menu->addChild(row);
-        // Collab: the host chooses the ADMs (who can save and publish the level).
-        if (!group && m_owner && role != "owner" && role != "viewer") {
-            auto toggle = ui::makeTextButton(admin ? "Tirar ADM" : "Dar ADM", 78, admin ? "GJ_button_06.png" : "GJ_button_01.png", this, menu_selector(MembersPopup::onToggleAdmin), .24f, 24);
-            toggle->setTag(static_cast<int>(index));
-            toggle->setPosition({370, 225.f - i * 50});
-            menu->addChild(toggle);
+        if (moderate) {
+            auto actions = ui::makeTextButton("Acoes", 78, "GJ_button_05.png", this, menu_selector(MembersPopup::onActions), .26f, 24);
+            actions->setTag(static_cast<int>(index));
+            actions->setPosition({370, 225.f - i * 50});
+            menu->addChild(actions);
         }
         if (group && m_owner && role != "owner") {
             auto remove = ui::makeTextButton("Remover", 78, "GJ_button_06.png", this, menu_selector(MembersPopup::onRemove), .24f, 24);
@@ -287,6 +306,14 @@ void MembersPopup::onToggleAdmin(CCObject* s) {
                 r.success ? NotificationIcon::Success : NotificationIcon::Warning, 2.f)->show();
             if (r.success) self->fetch();
         });
+}
+
+void MembersPopup::onActions(CCObject* s) {
+    auto rows = arrayOrEmpty(m_rows).asArray().unwrap();
+    auto index = static_cast<size_t>(s->getTag());
+    if (index >= rows.size()) return;
+    WeakRef<MembersPopup> weak = this;
+    if (auto p = CollabMemberPopup::create(m_id, rows[index], m_rank, [weak] { if (auto self = weak.lock()) self->fetch(); })) p->show();
 }
 
 void MembersPopup::onPlayer(CCObject* s) {

@@ -40,12 +40,13 @@ private:
     cocos2d::CCNode* m_view = nullptr;
     cocos2d::CCLabelBMFont* m_status = nullptr;
     matjson::Value m_rows;
-    int m_page = 0;
+    int m_page = 0, m_rank = 1;
     bool m_owner = false;
     bool init(ChatKind kind, std::string id, std::string title);
-    void fetch();
     void render();
     void onPage(cocos2d::CCObject*);
+    void onActions(cocos2d::CCObject*);
+    void fetch();
     void onPlayer(cocos2d::CCObject*);
     void onRemove(cocos2d::CCObject*);
     void onToggleAdmin(cocos2d::CCObject*);

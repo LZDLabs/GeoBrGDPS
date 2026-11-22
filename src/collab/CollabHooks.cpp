@@ -5,6 +5,7 @@
 #include "CollabMerge.hpp"
 #include "CollabService.hpp"
 #include "../ui/CollabPopup.hpp"
+#include "../ui/CollabRoomPopup.hpp"
 #include "../ui/SocialPopups.hpp"
 
 #include <Geode/Geode.hpp>
@@ -110,7 +111,7 @@ class $modify(GeoBRCollabEditorUI, EditorUI) {
     bool init(LevelEditorLayer* editor) {
         if (!EditorUI::init(editor)) return false;
         auto room = roomOfEditor(editor);
-        if (room.empty()) return true;
+        if (room.empty()) { geobr::collab::startYellowWatch(this); return true; }
         auto win = CCDirector::sharedDirector()->getWinSize();
         auto menu = CCMenu::create();
         menu->setID("geobr-collab-editor-menu");
@@ -126,11 +127,24 @@ class $modify(GeoBRCollabEditorUI, EditorUI) {
         auto members = CCMenuItemSpriteExtra::create(membersSprite, this, menu_selector(GeoBRCollabEditorUI::onCollabMembers));
         members->setID("geobr-collab-members");
         menu->addChild(members);
+        // Room tools: clean, undo, reload, lock, code, restore, bans, log.
+        auto roomSprite = ButtonSprite::create("Sala", 46, true, "bigFont.fnt", "GJ_button_04.png", 24, .5f);
+        roomSprite->setScale(.75f);
+        auto roomButton = CCMenuItemSpriteExtra::create(roomSprite, this, menu_selector(GeoBRCollabEditorUI::onCollabRoom));
+        roomButton->setID("geobr-collab-room");
+        menu->addChild(roomButton);
         menu->setLayout(RowLayout::create()->setGap(6.f));
         addChild(menu, 100);
         // Live editing: changes and everyone's position, about once per second.
         geobr::collab::startLive(this, room);
+        geobr::collab::startYellowWatch(this);
         return true;
+    }
+
+    void onCollabRoom(CCObject*) {
+        auto room = roomOfEditor(m_editorLayer);
+        if (room.empty()) return;
+        if (auto popup = geobr::CollabRoomPopup::create(room, this)) popup->show();
     }
 
     void onCollabMembers(CCObject*) {

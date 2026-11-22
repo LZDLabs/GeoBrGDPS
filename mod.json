@@ -8,7 +8,7 @@
   },
   "id": "geobr.geobrmod",
   "name": "GeoBR Mod",
-  "version": "1.16.9",
+  "version": "1.17.0",
   "developer": "GeoBR",
   "description": "GeoBR: GDPS proprio (com o mod GeoBR GDPS), levels, caixas, passe, comunidade, TOP e o gamemode Arrow.",
   "dependencies": {

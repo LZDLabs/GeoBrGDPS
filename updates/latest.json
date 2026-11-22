@@ -1,19 +1,19 @@
 {
   "format": 1,
-  "notes": "1.16.9: codigo da Collab nao corta mais o ultimo caractere (digitando ou colando). Inclui o GeoBR Natal 2026 (1.16.8).",
+  "notes": "1.17.0: collab profissional. Fim do portal amarelo que se multiplicava (e botao para apagar os que sobraram), aviso discreto do chat, painel Sala (limpar, desfazer, recarregar, trancar, novo codigo, voltar ao save) e acoes nos membros (reverter, expulsar, banir, silenciar, so ver).",
   "packages": [
     {
       "id": "geobr.geobrmod",
       "name": "GeoBR",
-      "version": "1.16.9",
+      "version": "1.17.0",
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "7035eb7e00106a151fa41573eb901bc36da97cb3319ebe14f33fe76a0934e9b7"
+          "sha256": "41e9a7eb76a58925eb979449ec4b38409b3cbfdae51c6818dd1a5599ef8fe493"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/geobr.geobrmod.geode",
-          "sha256": "7035eb7e00106a151fa41573eb901bc36da97cb3319ebe14f33fe76a0934e9b7"
+          "sha256": "41e9a7eb76a58925eb979449ec4b38409b3cbfdae51c6818dd1a5599ef8fe493"
         }
       }
     },
