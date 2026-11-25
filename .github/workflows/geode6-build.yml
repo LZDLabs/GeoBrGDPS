@@ -1,0 +1,52 @@
+name: GeoBR - Build Geode 6
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - post-natal-geode6
+    paths:
+      - 'src/**'
+      - 'resources/**'
+      - 'mod.json'
+      - 'CMakeLists.txt'
+      - '.github/workflows/geode6-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geobr-geode6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Android 64-bit
+            os: ubuntu-latest
+            target: Android64
+          - name: Windows 64-bit
+            os: windows-latest
+            target: Win64
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build GeoBR Mod with latest Geode SDK
+        uses: geode-sdk/build-geode-mod@main
+        id: build
+        with:
+          sdk: latest
+          target: ${{ matrix.target }}
+          build-config: Release
+
+      - name: Upload ${{ matrix.name }} package
+        uses: actions/upload-artifact@v4
+        with:
+          name: geobr-${{ matrix.target }}
+          path: ${{ steps.build.outputs.build-output }}/*.geode
+          if-no-files-found: error
