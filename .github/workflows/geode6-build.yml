@@ -10,6 +10,7 @@ on:
       - 'resources/**'
       - 'mod.json'
       - 'CMakeLists.txt'
+      - 'gdps-core/**'
       - '.github/workflows/geode6-build.yml'
 
 permissions:
