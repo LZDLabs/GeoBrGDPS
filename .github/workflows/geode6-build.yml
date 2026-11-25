@@ -1,4 +1,5 @@
 name: GeoBR - Build Geode 6
+run-name: GeoBR Geode 6 validation
 
 on:
   workflow_dispatch:
