@@ -9,11 +9,11 @@
       "files": {
         "android64": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/gd2209/geobr.geobrmod.geode",
-          "sha256": "462e8bc420bf564cd083034db05b626e8df7787c149b1163f522036fcbaa8461"
+          "sha256": "20bbcb0e4c2e546b17711927cf2b8e40a1ad02b0742cd78d55341cbd1b911948"
         },
         "win": {
           "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/gd2209/geobr.geobrmod.geode",
-          "sha256": "462e8bc420bf564cd083034db05b626e8df7787c149b1163f522036fcbaa8461"
+          "sha256": "20bbcb0e4c2e546b17711927cf2b8e40a1ad02b0742cd78d55341cbd1b911948"
         }
       }
     },

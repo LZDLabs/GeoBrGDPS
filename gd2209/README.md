@@ -10,7 +10,7 @@ Downloads (pasta propria; os links do GD 2.2081 nao foram tocados):
 
 | arquivo | versao | sha256 (inicio) |
 |---|---|---|
-| gd2209/geobr.geobrmod.geode | 1.17.0 | 462e8bc420bf |
+| gd2209/geobr.geobrmod.geode | 1.17.0 | 20bbcb0e4c2e |
 | gd2209/geobr.gdps.geode | 1.0.3 | ea375044dfa1 |
 
 ## Diferencas para a versao 2.2081
