@@ -1,0 +1,36 @@
+{
+  "format": 1,
+  "notes": "1.17.0 para GD 2.2091 (Geode 6.0.0): GeoBR Natal 2026 + collab profissional (fim do portal amarelo infinito, aviso do chat, painel Sala, moderacao).",
+  "packages": [
+    {
+      "id": "geobr.geobrmod",
+      "name": "GeoBR",
+      "version": "1.17.0",
+      "files": {
+        "android64": {
+          "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/gd2209/geobr.geobrmod.geode",
+          "sha256": "462e8bc420bf564cd083034db05b626e8df7787c149b1163f522036fcbaa8461"
+        },
+        "win": {
+          "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/gd2209/geobr.geobrmod.geode",
+          "sha256": "462e8bc420bf564cd083034db05b626e8df7787c149b1163f522036fcbaa8461"
+        }
+      }
+    },
+    {
+      "id": "geobr.gdps",
+      "name": "GeoBR GDPS",
+      "version": "1.0.3",
+      "files": {
+        "android64": {
+          "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/gd2209/geobr.gdps.geode",
+          "sha256": "ea375044dfa1550373569482bbf45a22bed331c6c3c868f3565b087c850e475d"
+        },
+        "win": {
+          "url": "https://raw.githubusercontent.com/LZDLabs/GeoBrGDPS/main/updates/gd2209/geobr.gdps.geode",
+          "sha256": "ea375044dfa1550373569482bbf45a22bed331c6c3c868f3565b087c850e475d"
+        }
+      }
+    }
+  ]
+}
